@@ -35,6 +35,37 @@
 #'
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
+#' @examples
+#' \dontrun{
+#'#load ctmm for data and comparison
+#'library(ctmm)
+#'#load pelican dataset
+#'data('pelican')
+#'#extract argos data with errors and store in a dataframe
+#'Pelican <- data.frame(x = pelican$argos$x, y = pelican$argos$y, time = pelican$argos$t, ID = 1, error = pelican$argos$VAR.xy )
+#'
+#'#run 10000 iterations of a 2 state model (no error, but see commented line for example)
+#'mcmc <- runMCMC( track = Pelican[,1:4], nbStates = 2, nbIter = 10000,
+#'                 fixpar = list( tau_pos = c( NA, NA ), tau_vel = c( NA, NA ), sigma = c( NA, NA ) ),
+#'                 inits = list( tau_pos = c( 13e6, 13e6 ),
+#'                               tau_vel = c( 1e4, 1e4 ),
+#'                               sigma = c( 2e11, 2e11 ),
+#'                               Q = matrix( c( -0.05, 0.05, 0.05, -0.05 ), 2 ),
+#'                               state = sample( 1:2, size = nrow( Pelican ), replace = TRUE ) ),
+#'                 priors = list( mean = log( c( 9e6, 9e6, 1e4, 1e4, 2e11, 2e11 ) ),
+#'                                sd = c( 2, 2, 2, 2, 2, 2 ), shape = 2, rate = 10, con = 0 ),
+#'                 props = list( tau_posSD = 0.2, tau_velSD = 0.1, sigmaSD = 0.2, updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
+#'                 tunes = list( thinStates = 10000 * 0.001 ),
+#'                 #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
+#'                 Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
+#'                 mc.cores = 1 )
+#'
+#'#parameter estimates (tau_pos1, tau_pos2, tau_vel1, tau_vel2, sigma1, sigma2)
+#'colMeans( mcmc$allparam[ -( 1:( nrow( mcmc$allparam ) / 2 ) ) , ] )
+#'
+#'#state sequence
+#'round( colMeans( mcmc$allstates[ -( 1:nrow( mcmc$allstates ) / 2 ), ] ) )
+#' }
 #'
 #' @importFrom MASS mvrnorm
 #' @importFrom stats dnorm runif rnorm rexp rgamma

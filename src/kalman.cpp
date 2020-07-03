@@ -187,7 +187,7 @@ double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
   mat W = uiFperm.slice(0) * uperm.slice(0).submat(0, 1, nbData * 2 - 1, 2);     //(2,2)
 
   mat iW(2,2, fill::zeros);
-  // cheat for avoiding PDsolve
+  // cheat for avoiding PDsolve, will probably have to code this and replace all inversions
   if( std::isinf( tau_pos( S(0) - 1 ) ) ) {
     iW(0,0) = datum::inf;
     iW(1,1) = datum::inf;
@@ -222,7 +222,7 @@ double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
 
   mat sigmaK = ( ziFperm.slice(0).replace( datum::nan, 0 )  * zRes ) / ( 2 * N );
 
-  // if IOU for first position, drop first logDet because it needs to be conditioned off initial state and will be Inf
+  // if IOU for first position, drop first logDet because couldn't condition off initial state and will be Inf
   // doubt we will ever encounter this, most tagging is done in 'resident' areas
   logDet = std::isinf( tau_pos( S(0) - 1 ) ) ? mean( logdetF.subvec( 1, nbData - 1 ) ) : mean( logdetF );
 
