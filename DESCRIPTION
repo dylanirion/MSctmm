@@ -1,0 +1,15 @@
+Package: MSctmm
+Type: Package
+Title: Multi State Continous-Time Movement Modeling
+Version: 0.1.0
+Author: Dylan Irion
+Maintainer: Dylan Irion <dylan@caperadd.com>
+Description: Extends the R package ctmm (Calabrese et al., 2016) to 
+    state-switching models. Provides tools for Bayesian inference 
+    into multistate continous-time movement modeling, for the 
+    analysis of animal movement data based on the R package MScrawl (Michelot and Blackwell, 2019).
+License: GPL-3
+Imports: Rcpp (>= 0.12.16), ECctmc, gtools, MASS, parallel, ctmm, prettyunits
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.1.1
+Encoding: UTF-8
