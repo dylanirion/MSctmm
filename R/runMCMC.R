@@ -35,6 +35,12 @@
 #'
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
+#'
+#' @param adapt Logical. If TRUE, use the the Robust Adaptive Metropolis (RAM) algorithm
+#' by (Vihola 2012) to update the proposal distribution for each parameter.
+#'
+#' @param mc.cores Integer specifying number of logical cores to use for likelihood
+#' calculation when fitting to multiple IDs.
 #' @examples
 #' \dontrun{
 #'#load ctmm for data and comparison
@@ -71,11 +77,12 @@
 #' @importFrom stats dnorm runif rnorm rexp rgamma
 #' @importFrom parallel mclapply
 #' @importFrom prettyunits vague_dt pretty_dt
+#' @importFrom ramcmc adapt_S
 #' @export
 #'
 #' @useDynLib MSctmm
-runMCMC <- function(track, nbStates, nbIter, fixpar=NULL, inits, priors, props, tunes, Hmat,
-                    updateState=TRUE, mc.cores = 1)
+runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props, tunes, Hmat,
+                    updateState = TRUE, adapt = FALSE, mc.cores = 1)
 {
 
     ######################
@@ -124,6 +131,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar=NULL, inits, priors, props, 
     tau_posPropSD <- props$tau_posSD
     tau_velPropSD <- props$tau_velSD
     sigmaPropSD <- props$sigmaSD
+    S <- diag( c( tau_posPropSD, tau_velPropSD, sigmaPropSD ), nbStates * 3 )
     updateLim <- props$updateLim
     updateProbs <- props$updateProbs
     if(is.null(tau_posPropSD) | is.null(tau_velPropSD) | is.null(sigmaPropSD) | is.null(updateLim))
@@ -181,7 +189,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar=NULL, inits, priors, props, 
     names(oldllk) <- ids
 
     # initial log-prior
-    oldlogprior <- sum( dnorm( log( param[ unlist(is.na(fixpar)) ] ), priorMean[ unlist(is.na(fixpar)) ], priorSD[ unlist(is.na(fixpar)) ], log = TRUE ) )
+    oldlogprior <- sum( dnorm( log( param[ is.na(unlist(fixpar)) ] ), priorMean[ is.na(unlist(fixpar)) ], priorSD[ is.na(unlist(fixpar)) ], log = TRUE ) )
 
     ###############################
     ## Loop over MCMC iterations ##
@@ -242,10 +250,12 @@ runMCMC <- function(track, nbStates, nbIter, fixpar=NULL, inits, priors, props, 
         ## 2. Update movement parameters ##
         ###################################
         # On working scale
-        tau_posprimeW <- rnorm(nbStates,log(tau_pos),tau_posPropSD)
-        tau_velprimeW <- rnorm(nbStates,log(tau_vel),tau_velPropSD)
-        sigmaprimeW <- rnorm(nbStates,log(sigma),sigmaPropSD)
-        newlogprior <- sum(dnorm(c(tau_posprimeW,tau_velprimeW,sigmaprimeW)[ unlist(is.na(fixpar)) ],priorMean[ unlist(is.na(fixpar)) ],priorSD[ unlist(is.na(fixpar)) ],log=TRUE))
+        u <- rnorm( length(param) )
+        thetas <- log( c( param ) ) + S %*% u
+        tau_posprimeW <- thetas[1:nbStates]
+        tau_velprimeW <- thetas[(nbStates + 1):(2 * nbStates)]
+        sigmaprimeW <- thetas[(2 * nbStates + 1):(3 * nbStates)]
+        newlogprior <- sum(dnorm(c(tau_posprimeW,tau_velprimeW,sigmaprimeW)[ is.na(unlist(fixpar)) ],priorMean[ is.na(unlist(fixpar)) ],priorSD[ is.na(unlist(fixpar)) ],log=TRUE))
 
         # On natural scale
         tau_posprime <- vector( 'double',nbStates )
@@ -273,6 +283,10 @@ runMCMC <- function(track, nbStates, nbIter, fixpar=NULL, inits, priors, props, 
             param <- c( tau_pos, tau_vel, sigma )
             oldllk <- newllk
             oldlogprior <- newlogprior
+        }
+
+        if( adapt & iter > 1 & iter <= nbIter / 2 ) {
+            S <- adapt_S(S, u, min( 1, exp(logHR) ), iter )
         }
 
         ###############################
