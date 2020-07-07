@@ -36,8 +36,9 @@
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
 #'
-#' @param adapt Logical. If TRUE, use the the Robust Adaptive Metropolis (RAM) algorithm
-#' by (Vihola 2012) to update the proposal distribution for each parameter.
+#' @param adapt Logical. (Experimental) If TRUE, use the the Robust Adaptive Metropolis (RAM) algorithm
+#' by (Vihola 2012) to update the proposal distribution for each parameter at each iteration
+#' (up to nbIter / 2) to a target acceptance rate of 23.4%. Will also adapt the updateLim and updateProbs parameters.
 #'
 #' @param mc.cores Integer specifying number of logical cores to use for likelihood
 #' calculation when fitting to multiple IDs.
@@ -100,9 +101,9 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     state0 <- inits$state
 
     if( is.null( fixpar ) ) {
-      fixpar <- list( tau_pos = rep(NA, nbStates),
-                      tau_vel = rep(NA, nbStates),
-                      sigma = rep(NA, nbStates))
+      fixpar <- list( tau_pos = rep( NA, nbStates ),
+                      tau_vel = rep( NA, nbStates ),
+                      sigma = rep( NA, nbStates ) )
     } else {
       fixpar <- fixpar
     }
@@ -131,7 +132,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     tau_posPropSD <- props$tau_posSD
     tau_velPropSD <- props$tau_velSD
     sigmaPropSD <- props$sigmaSD
-    S <- diag( c( tau_posPropSD, tau_velPropSD, sigmaPropSD ), nbStates * 3 )
+    S <- diag( rep(c( tau_posPropSD, tau_velPropSD, sigmaPropSD ), each = nbStates), nbStates * 3 )
     updateLim <- props$updateLim
     updateProbs <- props$updateProbs
     if(is.null(tau_posPropSD) | is.null(tau_velPropSD) | is.null(sigmaPropSD) | is.null(updateLim))
@@ -244,6 +245,18 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
                 oldllk <- newllk
                 HmatAll <- newHmatAll
             }
+
+            if(adapt & iter <= nbIter / 2) {
+              change = min( 1, exp( logHR ) ) - 0.234;
+              if(change > 0) {  #lengthen
+                updateLim[2] <- max(updateLim[1], updateLim[2] + 1)
+                updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
+
+              } else if(change < 0) {          #shorten
+                updateLim[2] <- max(updateLim[1], updateLim[2] - 1)
+                updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
+              }
+            }
         }
 
         ###################################
@@ -285,8 +298,8 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
             oldlogprior <- newlogprior
         }
 
-        if( adapt & iter > 1 & iter <= nbIter / 2 ) {
-            S <- adapt_S(S, u, min( 1, exp(logHR) ), iter )
+        if( adapt & iter <= nbIter / 2 ) {
+            S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
         }
 
         ###############################
@@ -308,6 +321,12 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     cat("\n")
     cat("Elapsed: ", pretty_dt(difftime(Sys.time(),t0,units="secs")),sep="")
     cat("\n")
+    if(adapt) {
+      cat('updateLim: [', updateLim[1],',', updateLim[2], ']\n',sep='')
+      cat('S:\n')
+      print(round(S,4))
+      cat('\n')
+    }
 
     return(list(allparam = allparam,
                 allrates = allrates,
