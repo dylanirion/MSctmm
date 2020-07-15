@@ -36,9 +36,9 @@
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
 #'
-#' @param adapt Logical. (Experimental) If TRUE, use the the Robust Adaptive Metropolis (RAM) algorithm
-#' by (Vihola 2012) to update the proposal distribution for each parameter at each iteration
-#' (up to nbIter / 2) to a target acceptance rate of 23.4%. Will also adapt the updateLim and updateProbs parameters.
+#' @param adapt Integer. (Experimental) If adapt > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+#' by (Vihola 2012) to update the proposal distribution for each parameter at each iteration (up to adapt iterations)
+#' to a target acceptance rate of 23.4%. Will also adapt the updateLim and updateProbs parameters.
 #'
 #' @param mc.cores Integer specifying number of logical cores to use for likelihood
 #' calculation when fitting to multiple IDs.
@@ -173,7 +173,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
       indSwitch <- which( obs[[ i ]][ -1, "state" ] != obs[[ i ]][ -nbObs, "state" ] ) + 1
       switch[[ i ]] <- matrix( c( obs[[ i ]][ indSwitch, "time" ] - 0.001, rle( obs[[ i ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
       colnames( switch[[ i ]] ) <- c( "time", "state" )
-      if( nrow( switch[[ i ]] ) ) {
+      if( !all(is.na( switch[[ i ]] ) ) ) {
         data[[ i ]] <- rbind( obs[[ i ]] ,cbind( NA, NA, switch[[ i ]] ) )
       } else {
         data [[ i ]] <- obs[[ i ]]
@@ -246,17 +246,17 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
                 HmatAll <- newHmatAll
             }
 
-            if(adapt & iter <= nbIter / 2) {
-              change = min( 1, exp( logHR ) ) - 0.234;
-              if(change > 0) {  #lengthen
-                updateLim[2] <- max(updateLim[1], updateLim[2] + 1)
-                updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
-
-              } else if(change < 0) {          #shorten
-                updateLim[2] <- max(updateLim[1], updateLim[2] - 1)
-                updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
-              }
-            }
+            # if( adapt & iter <= adapt ) {
+            #   change = min( 1, exp( logHR ) ) - 0.234;
+            #   if(change > 0) {  #lengthen
+            #     updateLim[2] <- max(updateLim[1], updateLim[2] + 1)
+            #     updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
+            #
+            #   } else if(change < 0) {          #shorten
+            #     updateLim[2] <- max(updateLim[1], updateLim[2] - 1)
+            #     updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
+            #   }
+            # }
         }
 
         ###################################
@@ -298,7 +298,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
             oldlogprior <- newlogprior
         }
 
-        if( adapt & iter <= nbIter / 2 ) {
+        if( adapt & iter <= adapt ) {
             S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
         }
 
