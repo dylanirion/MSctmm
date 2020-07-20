@@ -7,9 +7,9 @@
 #' and MScrawl (Michelot and Blackwell, 2019).
 #'
 #' @name kalman_rcpp
-#' @param data Matrix of data, including columns "x", "y",
-#' "time", and "state" (in that order).
-#' @param param Vector of movement parameters (tau_vel, tau_pos, and sigma)
+#' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
+#' \code{"time"}, and \code{"state"} (in that order).
+#' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
 #'

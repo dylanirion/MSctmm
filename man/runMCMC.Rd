@@ -20,22 +20,20 @@ runMCMC(
 )
 }
 \arguments{
-\item{track}{Dataframe of data, with columns "x", "y", "time", and "ID"}
+\item{track}{Dataframe of data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}}
 
 \item{nbStates}{Number of states}
 
 \item{nbIter}{Number of iterations}
 
-\item{fixpar}{Vector of fixed parameter values (tau_pos, tau_vel, sigma), with NA for parameters to estimate}
+\item{fixpar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
 
-\item{inits}{List of initial parameters
-(tau_pos, tau_vel, sigma, Q, state)}
+\item{inits}{List of initial parameters (tau_pos, tau_vel, sigma, Q, state)}
 
 \item{priors}{List of parameters of prior distributions, with components:
 \itemize{
-  \item{"mean":} Vector of means for normal priors on movement parameters, of length 3*nbStates
-  \item{"sd":} Vector of standard deviations for normal priors on movement parameters, of length
-3*nbStates
+  \item{"mean":} Vector of means for normal priors on movement parameters, of length \code{"3*nbStates"}
+  \item{"sd":} Vector of standard deviations for normal priors on movement parameters, of length \code{"3*nbStates"}
   \item{"shape":} Vector of shapes of gamma priors for the transition rates
   \item{"rate":} Vector of rates of gamma priors for the transition rates
   \item{"con":} Vector of concentrations of Dirichlet priors for transition probabilities
@@ -43,11 +41,9 @@ runMCMC(
 
 \item{props}{List of parameters of proposal distributions, with components:
 \itemize{
-  \item{"tau_posSD":} Scalar standard deviation for normal proposal distribution of tau_pos
-  \item{"tau_velSD":} Scalar standard deviation for normal proposal distribution of tau_vel
-  \item{"sigmaSD":} Scalar standard deviation for normal proposal distribution of sigma
+  \item{"S":} Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
   \item{"updateLim":} Vector of two values: min and max length of updated state sequence
-  \item{"updateProbs":} Probability for each element of updateLim[1]:updateLim[2] (if NULL,
+  \item{"updateProbs":} Probability for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
   all values are equiprobable)
 }}
 
@@ -63,8 +59,9 @@ for each row of data)}
 \item{updateState}{Logical. If FALSE, the state process is not updated
 (for exploratory analysis only, useful for testing single state models)}
 
-\item{adapt}{Logical. If TRUE, use the the Robust Adaptive Metropolis (RAM) algorithm
-by (Vihola 2012) to update the proposal distribution for each parameter.}
+\item{adapt}{Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
+to a target acceptance rate of 23.4\%.}
 
 \item{mc.cores}{Integer specifying number of logical cores to use for likelihood
 calculation when fitting to multiple IDs.}
@@ -91,7 +88,7 @@ mcmc <- runMCMC( track = Pelican[,1:4], nbStates = 2, nbIter = 10000,
                               state = sample( 1:2, size = nrow( Pelican ), replace = TRUE ) ),
                 priors = list( mean = log( c( 9e6, 9e6, 1e4, 1e4, 2e11, 2e11 ) ),
                                sd = c( 2, 2, 2, 2, 2, 2 ), shape = 2, rate = 10, con = 0 ),
-                props = list( tau_posSD = 0.2, tau_velSD = 0.1, sigmaSD = 0.2, updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
+                props = list( S = diag( c( 0.2, 0.2, 0.1, 0.1, 0.2, 0.2 ), 6 ), updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
                 tunes = list( thinStates = 10000 * 0.001 ),
                 #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
                 Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
@@ -104,4 +101,13 @@ colMeans( mcmc$allparam[ -( 1:( nrow( mcmc$allparam ) / 2 ) ) , ] )
 round( colMeans( mcmc$allstates[ -( 1:nrow( mcmc$allstates ) / 2 ), ] ) )
 }
 
+}
+\references{
+Michelot, T., Blackwell, P.G. (2019).
+State‐switching continuous‐time correlated random walks.
+Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
+
+Vihola, M. (2012).
+Robust adaptive Metropolis algorithm with coerced acceptance rate.
+Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
 }

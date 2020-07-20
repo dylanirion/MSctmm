@@ -7,10 +7,10 @@
 kalman_rcpp(data, param, Hmat)
 }
 \arguments{
-\item{data}{Matrix of data, including columns "x", "y",
-"time", and "state" (in that order).}
+\item{data}{Matrix of data, including columns \code{"x"}, \code{"y"},
+\code{"time"}, and \code{"state"} (in that order).}
 
-\item{param}{Vector of movement parameters (tau_vel, tau_pos, and sigma)}
+\item{param}{Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})}
 
 \item{Hmat}{Matrix of observation error variance (four columns, and one row
 for each row of data)}

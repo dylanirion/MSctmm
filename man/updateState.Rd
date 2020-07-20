@@ -32,7 +32,7 @@ The update is done with the function \code{sample_path} from the
 package ECctmc (Fintzi, 2017).
 }
 \references{
-Jon Fintzi (2017). ECctmc: Simulation from Endpoint-Conditioned Continuous 
-Time Markov Chains. R package version 0.2.4. 
+Jon Fintzi (2017). ECctmc: Simulation from Endpoint-Conditioned Continuous
+Time Markov Chains. R package version 0.2.4.
 https://CRAN.R-project.org/package=ECctmc
 }
