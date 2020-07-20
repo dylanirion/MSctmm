@@ -1,28 +1,24 @@
 
 #' Run MCMC iterations
 #'
-#' @param track Dataframe of data, with columns "x", "y", "time", and "ID"
+#' @param track Dataframe of data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}
 #' @param nbStates Number of states
 #' @param nbIter Number of iterations
-#' @param fixpar Vector of fixed parameter values (tau_pos, tau_vel, sigma), with NA for parameters to estimate
-#' @param inits List of initial parameters
-#' (tau_pos, tau_vel, sigma, Q, state)
+#' @param fixpar List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate
+#' @param inits List of initial parameters (tau_pos, tau_vel, sigma, Q, state)
 #' @param priors List of parameters of prior distributions, with components:
 #' \itemize{
-#'   \item{"mean":} Vector of means for normal priors on movement parameters, of length 3*nbStates
-#'   \item{"sd":} Vector of standard deviations for normal priors on movement parameters, of length
-#' 3*nbStates
+#'   \item{"mean":} Vector of means for normal priors on movement parameters, of length \code{"3*nbStates"}
+#'   \item{"sd":} Vector of standard deviations for normal priors on movement parameters, of length \code{"3*nbStates"}
 #'   \item{"shape":} Vector of shapes of gamma priors for the transition rates
 #'   \item{"rate":} Vector of rates of gamma priors for the transition rates
 #'   \item{"con":} Vector of concentrations of Dirichlet priors for transition probabilities
 #' }
 #' @param props List of parameters of proposal distributions, with components:
 #' \itemize{
-#'   \item{"tau_posSD":} Scalar standard deviation for normal proposal distribution of tau_pos
-#'   \item{"tau_velSD":} Scalar standard deviation for normal proposal distribution of tau_vel
-#'   \item{"sigmaSD":} Scalar standard deviation for normal proposal distribution of sigma
+#'   \item{"S":} Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
 #'   \item{"updateLim":} Vector of two values: min and max length of updated state sequence
-#'   \item{"updateProbs":} Probability for each element of updateLim[1]:updateLim[2] (if NULL,
+#'   \item{"updateProbs":} Probability for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
 #'   all values are equiprobable)
 #' }
 #' @param tunes List of tuning parameters, with components:
@@ -36,12 +32,21 @@
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
 #'
-#' @param adapt Integer. (Experimental) If adapt > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
-#' by (Vihola 2012) to update the proposal distribution for each parameter at each iteration (up to adapt iterations)
-#' to a target acceptance rate of 23.4%. Will also adapt the updateLim and updateProbs parameters.
+#' @param adapt Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+#' by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
+#' to a target acceptance rate of 23.4\%.
 #'
 #' @param mc.cores Integer specifying number of logical cores to use for likelihood
 #' calculation when fitting to multiple IDs.
+#'
+#' @references
+#' Michelot, T., Blackwell, P.G. (2019).
+#' State‐switching continuous‐time correlated random walks.
+#' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
+#'
+#' Vihola, M. (2012).
+#' Robust adaptive Metropolis algorithm with coerced acceptance rate.
+#' Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
 #' @examples
 #' \dontrun{
 #'#load ctmm for data and comparison
@@ -61,7 +66,7 @@
 #'                               state = sample( 1:2, size = nrow( Pelican ), replace = TRUE ) ),
 #'                 priors = list( mean = log( c( 9e6, 9e6, 1e4, 1e4, 2e11, 2e11 ) ),
 #'                                sd = c( 2, 2, 2, 2, 2, 2 ), shape = 2, rate = 10, con = 0 ),
-#'                 props = list( tau_posSD = 0.2, tau_velSD = 0.1, sigmaSD = 0.2, updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
+#'                 props = list( S = diag( c( 0.2, 0.2, 0.1, 0.1, 0.2, 0.2 ), 6 ), updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
 #'                 tunes = list( thinStates = 10000 * 0.001 ),
 #'                 #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
 #'                 Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
@@ -74,7 +79,6 @@
 #'round( colMeans( mcmc$allstates[ -( 1:nrow( mcmc$allstates ) / 2 ), ] ) )
 #' }
 #'
-#' @importFrom MASS mvrnorm
 #' @importFrom stats dnorm runif rnorm rexp rgamma
 #' @importFrom parallel mclapply
 #' @importFrom prettyunits vague_dt pretty_dt
@@ -129,14 +133,11 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     }
 
     # unpack proposal parameters
-    tau_posPropSD <- props$tau_posSD
-    tau_velPropSD <- props$tau_velSD
-    sigmaPropSD <- props$sigmaSD
-    S <- diag( rep(c( tau_posPropSD, tau_velPropSD, sigmaPropSD ), each = nbStates), nbStates * 3 )
+    S <- props$S
     updateLim <- props$updateLim
     updateProbs <- props$updateProbs
-    if(is.null(tau_posPropSD) | is.null(tau_velPropSD) | is.null(sigmaPropSD) | is.null(updateLim))
-        stop("'props' should have components tau_posSD, tau_velSD, sigmaSD, and updateLim")
+    if(is.null(S) | is.null(updateLim))
+        stop("'props' should have components S and updateLim")
 
     if(is.null(updateProbs))
         updateProbs <- rep(1, length(updateLim[1]:updateLim[2]))/length(updateLim[1]:updateLim[2])
@@ -246,59 +247,35 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
                 HmatAll <- newHmatAll
             }
 
-            # if( adapt & iter <= adapt ) {
-            #   change = min( 1, exp( logHR ) ) - 0.234;
-            #   if(change > 0) {  #lengthen
-            #     updateLim[2] <- max(updateLim[1], updateLim[2] + 1)
-            #     updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
-            #
-            #   } else if(change < 0) {          #shorten
-            #     updateLim[2] <- max(updateLim[1], updateLim[2] - 1)
-            #     updateProbs <- rep( 1/(diff(updateLim)+1), diff(updateLim)+1 )
-            #   }
-            # }
         }
 
         ###################################
         ## 2. Update movement parameters ##
         ###################################
         # On working scale
-        u <- rnorm( length(param) )
-        thetas <- log( c( param ) ) + S %*% u
-        tau_posprimeW <- thetas[1:nbStates]
-        tau_velprimeW <- thetas[(nbStates + 1):(2 * nbStates)]
-        sigmaprimeW <- thetas[(2 * nbStates + 1):(3 * nbStates)]
-        newlogprior <- sum(dnorm(c(tau_posprimeW,tau_velprimeW,sigmaprimeW)[ is.na(unlist(fixpar)) ],priorMean[ is.na(unlist(fixpar)) ],priorSD[ is.na(unlist(fixpar)) ],log=TRUE))
+        u <- rnorm( length( param ) )
+        thetas <- log( param ) + as.vector( S %*% u )
+        newlogprior <- sum(dnorm(thetas[ is.na( unlist( fixpar ) ) ],priorMean[ is.na( unlist( fixpar ) ) ],priorSD[ is.na( unlist( fixpar ) ) ],log=TRUE))
 
         # On natural scale
-        tau_posprime <- vector( 'double',nbStates )
-        tau_velprime <- vector( 'double',nbStates )
-        sigmaprime <- vector( 'double',nbStates )
-
-        tau_posprime[ is.na(fixpar$tau_pos) ] <- exp(tau_posprimeW)[ is.na(fixpar$tau_pos) ]
-        tau_posprime[ !is.na(fixpar$tau_pos) ] <- fixpar$tau_pos[ !is.na(fixpar$tau_pos) ]
-        tau_velprime[ is.na(fixpar$tau_vel) ] <- exp(tau_velprimeW)[ is.na(fixpar$tau_vel) ]
-        tau_velprime[ !is.na(fixpar$tau_vel) ] <- fixpar$tau_vel[ !is.na(fixpar$tau_vel) ]
-        sigmaprime[ is.na(fixpar$sigma) ] <- exp(sigmaprimeW)[ is.na(fixpar$sigma) ]
-        sigmaprime[ !is.na(fixpar$sigma) ] <- fixpar$sigma[ !is.na(fixpar$sigma) ]
+        thetasprime <- unlist( fixpar )
+        thetasprime[ is.na( unlist( fixpar ) ) ] <- exp( thetas[ is.na( unlist( fixpar ) ) ] )
 
         # Calculate acceptance ratio
-        newllk <- mclapply( ids, function( id ) { kalman_rcpp( data = data[[ id ]], param = c( tau_posprime, tau_velprime, sigmaprime ), Hmat = HmatAll[[ id ]] ) }, mc.cores = mc.cores )
+        #TODO: check sometime how this compares in speed to just calculating them all together in the KF
+        newllk <- mclapply( ids, function( id ) { kalman_rcpp( data = data[[ id ]], param = thetasprime, Hmat = HmatAll[[ id ]] ) }, mc.cores = mc.cores )
         names(newllk) <- ids
         logHR <- do.call( 'sum', newllk ) + newlogprior - do.call( 'sum', oldllk ) - oldlogprior
 
         if(log(runif(1))<logHR) {
             # Accept new parameter values
             accParam[iter] <- 1
-            tau_pos <- tau_posprime
-            tau_vel <- tau_velprime
-            sigma <- sigmaprime
-            param <- c( tau_pos, tau_vel, sigma )
+            param <- thetasprime
             oldllk <- newllk
             oldlogprior <- newlogprior
         }
 
-        if( adapt & iter <= adapt ) {
+        if( adapt & iter >= 1000 & iter <= adapt ) {
             S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
         }
 
