@@ -37,7 +37,7 @@
 #' to a target acceptance rate of 23.4\%.
 #'
 #' @param mc.cores Integer specifying number of logical cores to use for likelihood
-#' calculation when fitting to multiple IDs.
+#' calculation when fitting to multiple IDs. NB. The overheads of setting up each core may make running in parallel **slower** than running on one sinlge core.
 #'
 #' @references
 #' Michelot, T., Blackwell, P.G. (2019).

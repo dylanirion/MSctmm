@@ -64,7 +64,7 @@ by Vihola (2012) to update the proposal distribution for each parameter at each 
 to a target acceptance rate of 23.4\%.}
 
 \item{mc.cores}{Integer specifying number of logical cores to use for likelihood
-calculation when fitting to multiple IDs.}
+calculation when fitting to multiple IDs. NB. The overheads of setting up each core may make running in parallel **slower** than running on one sinlge core.}
 }
 \description{
 Run MCMC iterations
