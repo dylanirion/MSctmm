@@ -12,7 +12,7 @@ using namespace arma;
 //'
 //' @name kalman_rcpp
 //' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-//' \code{"time"}, and \code{"state"} (in that order).
+//' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
 //' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
 //' @param Hmat Matrix of observation error variance (four columns, and one row
 //' for each row of data)
@@ -38,70 +38,81 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
+Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hmat ) {
 
-  int nstate = param.size() / 3;
   int nbData = data.n_rows;
+  int N = nbData;
+  int nbState = param.size() / 3;
 
   // unpack data
-  mat X = data.cols(0,1); // (x,y)
-  vec time = data.col(2); // time
-  vec S = data.col(3); // state
+  mat X = data.cols( 0, 1 );  // x, y
+  vec time = data.col( 2 );   // time
+  vec ID = data.col( 3 );     // ID
+  vec S = data.col( 4 );      // state
   // time intervals
   vec dt( nbData, fill::ones );
   dt(0) = datum::inf;
   dt.subvec( 1, nbData - 1 ) = diff( time );
+  mat aest( 4, 3, fill::zeros );  // state estimate
+  mat Pest( 4, 4, fill::zeros );  //covariance estimate
 
   // unpack parameters
-  vec tau_pos = param.subvec( 0, nstate - 1 );
-  vec tau_vel = param.subvec( nstate, 2 * nstate - 1 );
-  vec sigma = param.subvec( 2 * nstate, 3 * nstate - 1 );
+  vec tau_pos = param.subvec( 0, nbState - 1 );
+  vec tau_vel = param.subvec( nbState, 2 * nbState - 1 );
+  vec sigma = param.subvec( 2 * nbState, 3 * nbState - 1 );
 
   // define all matrices and vectors needed below
-  mat Z(2, 4, fill::zeros);
-  Z(0,0) = 1;
-  Z(1,2) = 1;
-  mat I(4,4, fill::eye);
-  mat H(2,2, fill::zeros);
-  mat T(4,4);
-  mat Q(4,4);
-  mat K(4,2, fill::zeros);
-  mat L(4,4, fill::zeros);
-  cube u(2,3,nbData, fill::zeros);
-  cube iF(2,2,nbData, fill::zeros);
-  cube uiF(2,2,nbData, fill::zeros);
-  colvec logdetF(nbData, fill::zeros);
+  mat Z( 2, 4, fill::zeros ); // observation model which maps the true state space into the observed space ( P, Hk )
+  Z( 0, 0 ) = 1;
+  Z( 1, 2 ) = 1;
+  mat I( 4, 4, fill::eye );   // identity matrix
+  mat H( 2, 2, fill::zeros ); // the covariance of the observation noise ( error, Rk )
+  mat T( 4, 4 );              // state transition model which is applied to the previous state xk−1 ( Green, Fk )
+  mat Q( 4, 4 );              // covariance of the process noise ( Sigma, Q )
+  mat K( 4, 2, fill::zeros ); // Kalman Gain ( Gain, Kk )
+  cube u( 2, 3, nbData, fill::zeros );  // measurement residual ( zRes, yk )
+  mat zRes( 2*nbData, 1, fill::zeros ); // final measurement residual
+  cube iF( 2, 2, nbData, fill::zeros ); // inverse of residual covariance ( isRes )
+  cube uiF( 2, 2, nbData, fill::zeros ); // measurement residual * inverse of residual covariance ( uisRes )
+  colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
+  mat mu( 2, nbState, fill::zeros );
+
   double logDet;
-  int N = std::isinf( tau_pos( S(0) - 1 ) ) ? nbData - 1 : nbData;
   double llk;
 
-  // initial state mean
-  mat aest(4,3, fill::zeros);
-  // initial state covariance matrix
-  mat Pest(4,4, fill::zeros);
-  Pest = makeQ( tau_pos( S(0) - 1 ), tau_vel( S(0) - 1 ), sigma( S(0) - 1 ), dt(0) );
-
   // Kalman filter iterations
-  for(int i=0; i<nbData; i++) {
+  for( int i = 0; i < nbData; i++ ) {
 
-    if( i < nbData - 1 ) {
-      T = makeT( tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), dt(i + 1));
-      Q = makeQ( tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), sigma(S(i + 1) - 1), dt(i + 1));
+    if( i == 0 || ID( i ) != ID( i - 1 ) ) {
+      dt(i) = datum::inf;
+      // If first location of track, initialise state mean
+      aest = zeros( 4, 3 );
+      // and initial state covariance matrix
+      Pest = zeros( 4, 4 );
+      Pest = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
+      // and if also beginning this track in IOU, reduce N by 1
+      N = std::isinf( tau_pos( S(i) - 1 ) ) ? N - 1 : N;
+
     }
 
-    if(R_IsNA(X(i,0))) {
+    if( i < nbData - 1 ) {
+      T = makeT( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), dt( i + 1 ) );
+      Q = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma( S( i + 1 ) - 1 ), dt( i + 1 ) );
+    }
+
+    if( R_IsNA( X( i,0 ) ) ) {
       // if missing observation, we just update/forecast
       aest = T * aest;
       Pest = T * Pest * T.t() + Q;
     } else {
-      H(0,0) = Hmat(i,0);
-      H(1,1) = Hmat(i,1);
-      H(0,1) = Hmat(i,2);
-      H(1,0) = Hmat(i,3);
-      mat uslice(2,3, fill::zeros);
+      H( 0, 0 ) = Hmat( i, 0 );
+      H( 1, 1 ) = Hmat( i, 1 );
+      H( 0, 1 ) = Hmat( i, 2 );
+      H( 1, 0 ) = Hmat( i, 3 );
+      mat uslice( 2, 3, fill::zeros );
       uslice.col(0) = X.row(i).t();
-      uslice(0,1) = 1;
-      uslice(1,2) = 1;
+      uslice( 0, 1 ) = 1;
+      uslice( 1, 2 ) = 1;
       // measurement residual (zRes, u)
       u.slice(i) = uslice - (Z * aest );                  //(2,3)
       // residual covariance (sRes, F)
@@ -109,14 +120,14 @@ double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
       PestZt = PestZt.replace( datum::nan, 0 );
       mat ZPestZt = Z * PestZt;                           //(2,2)
       ZPestZt = ZPestZt.replace( datum::nan, 0 );
-      mat F = ZPestZt + H;                                //(2,2)
+      mat F = ZPestZt + H;                                // (2,2) residual covariance ( sRes, Sk )
       iF.slice(i) = F.i();
       logdetF(i) = det(F) > 0 ? log( std::abs( det(F) ) ) : datum::inf;
       uiF.slice(i) =  iF.slice(i) * u.slice(i).submat(0,1,1,2);    //(2,2)
       uiF.slice(i) = uiF.slice(i).replace( datum::nan, 0 );
 
       // Kalman gain
-      K = PestZt * iF.slice(i);                                    //(4,2)
+      K = PestZt * iF.slice(i);                                    // (4,2)
       //if gain is inf or nan, replace with Z
       uvec idx = find_nonfinite( K );
       mat Zt = Z.t();
@@ -166,50 +177,66 @@ double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
     }
   }
 
+  // u and uiF have dimensions (2, 3, nbData) and (2, 2, nbData)
+  // then get permuted to (nbData, 2, 3) and (2, nbData, 2)
+  // and reshaped to (2x nbData, 3, 1) and (2x nbData, 2, 1)
+
+  //permute u(r,c,s) to u(s,r,c) and reshape
+  cube uperm( nbData, 2, 3 );
+  for( int c = 0; c < u.n_cols; ++c )
+    for( int r = 0; r < u.n_rows; ++r )
+      for( int s = 0; s < u.n_slices; ++s )
+        uperm( s, r, c ) = u( r, c, s );
+  uperm.reshape( 2 * nbData, 3, 1 );
+
   //permute uiF(r,c,s) to uiF(c,s,r) and reshape
-  cube uiFperm(2,nbData,2);
+  cube uiFperm( 2, nbData, 2 );
   for (int c = 0; c < uiF.n_cols; ++c)
     for (int r = 0; r < uiF.n_rows; ++r)
       for (int s = 0; s < uiF.n_slices; ++s)
         uiFperm(c, s, r) = uiF(r, c, s);
   uiFperm.reshape(2, nbData * 2, 1 );
 
-  //permute u(r,c,s) to u(s,r,c) and reshape
-  cube uperm(nbData,2,3);
-  for (int c = 0; c < u.n_cols; ++c)
-    for (int r = 0; r < u.n_rows; ++r)
-      for (int s = 0; s < u.n_slices; ++s)
-        uperm(s, r, c) = u(r, c, s);
-  uperm.reshape(2 * nbData, 3, 1);
+  // calculate state based mu
+  for( int i = 0; i < nbState; i++ ) {
+    uvec ids = find( S == i + 1 );        // Find indices where state i occurs
+    uvec ids1 = ids * 2;
+    uvec ids2 = ( ids * 2 ) + 1;          // adjust indices to match previous permutation and reshaping
+    uvec ids3 = sort( join_cols( ids1, ids2 ) );  // concatenate
+    mat uiFslice = uiFperm.slice(0);
+    mat uSlice = uperm.slice(0);
+    uvec col( 1, fill::zeros );
+    uvec cols = regspace<uvec>(1,2);
+    mat D = uiFslice.cols(ids3) * uSlice.submat( ids3, col );    //(2,1)
+    mat W = uiFslice.cols(ids3) * uSlice.submat( ids3, cols );   //(2,2)
+    mat iW( 2, 2, fill::zeros );
 
+    // cheat for avoiding PDsolve, will probably have to code this and replace all inversions
+    if( std::isinf( tau_pos( i ) ) ) {
+      iW(0,0) = datum::inf;
+      iW(1,1) = datum::inf;
+    } else {
+      iW = W.i();
+    }
 
-  mat D = uiFperm.slice(0) * uperm.slice(0).col(0);                              //(2,1)
-  mat W = uiFperm.slice(0) * uperm.slice(0).submat(0, 1, nbData * 2 - 1, 2);     //(2,2)
+    mu.col(i) = iW * D;  // (2,1)
+    mu = mu.replace( datum::nan, 0 );
 
-  mat iW(2,2, fill::zeros);
-  // cheat for avoiding PDsolve, will probably have to code this and replace all inversions
-  if( std::isinf( tau_pos( S(0) - 1 ) ) ) {
-    iW(0,0) = datum::inf;
-    iW(1,1) = datum::inf;
-  } else {
-    iW = W.i();
+    // if IOU overwrite NaN stationary mean value with first location
+    // TODO: SHOULD I GENERATE A DIFFERENT MU FOR EACH IOU 'BOUT'??? OR AT LEAST EACH INDIVIDUAL?
+    // TODO: WHAT DOES THIS MEAN FOR LOGDET?
+    if( std::isinf( tau_pos( i ) ) ){
+      mu.col(i) = u.slice(0).col(0);
+    }
+
+    zRes.rows(ids3) = uSlice.col(0) - ( uSlice.submat( ids3, cols ) * mu.col(i) );     //(2*nbData,1) Lines 425,426
   }
-  //Environment pkg = Environment::namespace_env("ctmm");
-  //Function f = pkg["PDsolve"];
-  //mat iW = as<mat>( f( W ) );
 
-  mat mu = iW * D;
-  mu = mu.replace( datum::nan, 0 );
-  // if IOU overwrite NaN stationary mean value with first location
-  if( std::isinf( tau_pos( S(0) - 1 ) ) ){
-    mu.col(0) = u.slice(0).col(0);
-  }
-  mat zRes = uperm.slice(0).col(0) - ( uperm.slice(0).submat(0, 1, nbData * 2 - 1, 2) * mu );     //(2*nbData,1)
   zRes.reshape(nbData,2);
-  mu.reshape(1,2);
+  //mu.reshape(nbState,2);
   cube ziF(2,1,nbData, fill::zeros);
   for (int s = 0; s < iF.n_slices; ++s) {
-    ziF.slice(s) = iF.slice(s) * zRes.row(s).t();       //(2,1)
+    ziF.slice(s) = iF.slice(s) * zRes.row(s).t();       //(2,1) Line 450
   }
   //permute ziF(r,c,s) to ziF(c,s,r)
   cube ziFperm(1,nbData,2);
@@ -223,13 +250,15 @@ double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat) {
   mat sigmaK = ( ziFperm.slice(0).replace( datum::nan, 0 )  * zRes ) / ( 2 * N );
 
   // if IOU for first position, drop first logDet because couldn't condition off initial state and will be Inf
-  // doubt we will ever encounter this, most tagging is done in 'resident' areas
   logDet = std::isinf( tau_pos( S(0) - 1 ) ) ? mean( logdetF.subvec( 1, nbData - 1 ) ) : mean( logdetF );
 
   llk = -1 * ( as_scalar( sigmaK ) - 1 ) - logDet / 2;
   llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) / N ) );
   llk = std::isnan(llk) ? -1 * datum::inf : llk;
 
-  return llk;
+  NumericVector out = as<NumericVector>( wrap( join_cols( as<colvec>( wrap( llk ) ), vectorise(mu) ) ) );
+  out.attr("dim") = R_NilValue;
+
+  return out;
 
 }

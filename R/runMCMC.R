@@ -36,9 +36,6 @@
 #' by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 #' to a target acceptance rate of 23.4\%.
 #'
-#' @param mc.cores Integer specifying number of logical cores to use for likelihood
-#' calculation when fitting to multiple IDs. NB. The overheads of setting up each core may make running in parallel **slower** than running on one sinlge core.
-#'
 #' @references
 #' Michelot, T., Blackwell, P.G. (2019).
 #' State‐switching continuous‐time correlated random walks.
@@ -69,8 +66,7 @@
 #'                 props = list( S = diag( c( 0.2, 0.2, 0.1, 0.1, 0.2, 0.2 ), 6 ), updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
 #'                 tunes = list( thinStates = 10000 * 0.001 ),
 #'                 #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
-#'                 Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
-#'                 mc.cores = 1 )
+#'                 Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) )
 #'
 #'#parameter estimates (tau_pos1, tau_pos2, tau_vel1, tau_vel2, sigma1, sigma2)
 #'colMeans( mcmc$allparam[ -( 1:( nrow( mcmc$allparam ) / 2 ) ) , ] )
@@ -80,14 +76,13 @@
 #' }
 #'
 #' @importFrom stats dnorm runif rnorm rexp rgamma
-#' @importFrom parallel mclapply
 #' @importFrom prettyunits vague_dt pretty_dt
 #' @importFrom ramcmc adapt_S
 #' @export
 #'
 #' @useDynLib MSctmm
-runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props, tunes, Hmat,
-                    updateState = TRUE, adapt = FALSE, mc.cores = 1)
+runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, props, tunes, Hmat,
+                     updateState = TRUE, adapt = FALSE )
 {
 
     ######################
@@ -99,8 +94,8 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     #NB considering only isotropic case for now, this will eventually need to be a matrix
     #kalman_rcpp and MakeQ will need to accept a matrix
     sigma <- inits$sigma
-    param <- c(tau_pos, tau_vel, sigma)
-    Q <- rep(list(inits$Q), length( unique( track$ID ) ) )
+    param <- c( tau_pos, tau_vel, sigma )
+    Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
     names(Q) <- unique( track$ID )
     state0 <- inits$state
 
@@ -111,8 +106,8 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     } else {
       fixpar <- fixpar
     }
-    if(length(unlist(inits[1:3]))!=length(unlist(fixpar)))
-      stop("'fixpar' has the wrong length")
+    if(length( unlist( inits[1:3] ) )!=length( unlist( fixpar ) ) )
+      stop( "'fixpar' has the wrong length" )
 
     if(is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
         stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
@@ -157,38 +152,40 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
       track$ID <- 1
     }
 
-    ids <- as.character(unique(track$ID))
+    ids <- as.character( unique( track$ID ) )
     obs <- list()
     switch <- list()
-    data <- list()
-    HmatAll <- list()
+    data.list <- list()
 
     for( i in ids ) {
       nbObs <- nrow(track[ which( track$ID == i ), ])
       obs[[ i ]] <- matrix( c( track[ which( track$ID == i ), "x" ],
                                track[ which( track$ID == i ), "y" ],
+                               track[ which( track$ID == i ), "ID" ],
                                track[ which( track$ID == i ), "time" ],
                                state0[ which( track$ID == i )  ] ),
-                            ncol = 4 )
-      colnames( obs[[ i ]] ) <- c( "x", "y", "time", "state" )
+                            ncol = 5 )
+      colnames( obs[[ i ]] ) <- c( "x", "y", "ID", "time", "state" )
       indSwitch <- which( obs[[ i ]][ -1, "state" ] != obs[[ i ]][ -nbObs, "state" ] ) + 1
       switch[[ i ]] <- matrix( c( obs[[ i ]][ indSwitch, "time" ] - 0.001, rle( obs[[ i ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
       colnames( switch[[ i ]] ) <- c( "time", "state" )
-      if( !all(is.na( switch[[ i ]] ) ) ) {
-        data[[ i ]] <- rbind( obs[[ i ]] ,cbind( NA, NA, switch[[ i ]] ) )
-      } else {
-        data [[ i ]] <- obs[[ i ]]
-      }
-      data[[ i ]] <- data[[ i ]][ order( data[[ i ]][ , "time" ] ), ]
 
-      # initialise Hmat (rows of 0s for transitions)
-      HmatAll[[ i ]] <- matrix( 0, nrow( data[[ i ]] ), 4 )
-      HmatAll[[ i ]][ which( !is.na( data[[ i ]][ , "x" ] ) ), ] <- Hmat[ which( track$ID == i ), ]
+      if( !all( is.na( switch[[ i ]] ) ) ) {
+        data.list[[ i ]] <- rbind( obs[[ i ]] ,cbind( NA, NA, switch[[ i ]] ) )
+      } else {
+        data.list[[ i ]] <- obs[[ i ]]
+      }
     }
+    # flatten data
+    data.df <- do.call( "rbind", data.list )
+    data.df <- data.df[ order( data.df[,"ID"], data.df[,"time"] ), ]
+
+    # initialise Hmat (rows of 0s for transitions)
+    HmatAll <- matrix( 0, nrow( data.df ), 4 )
+    HmatAll[ which( !is.na( data.df[ , "x" ] ) ), ] <- Hmat
 
     # initial likelihood
-    oldllk <- mclapply( ids, function( id ) { kalman_rcpp( data = data[[ id ]], param = param, Hmat = HmatAll[[ id ]] ) }, mc.cores = mc.cores )
-    names(oldllk) <- ids
+    oldllk <- kalman_rcpp( data = data.df, param = param, Hmat = HmatAll )[1]
 
     # initial log-prior
     oldlogprior <- sum( dnorm( log( param[ is.na(unlist(fixpar)) ] ), priorMean[ is.na(unlist(fixpar)) ], priorSD[ is.na(unlist(fixpar)) ], log = TRUE ) )
@@ -196,53 +193,54 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
     ###############################
     ## Loop over MCMC iterations ##
     ###############################
-    allparam <- matrix(NA,nrow=nbIter,ncol=3*nbStates)
-    allrates <- array( NA, dim = c( nbIter, nbStates*(nbStates-1), length( ids ) ) )
+    allparam <- matrix( NA, nrow = nbIter, ncol = 5 * nbStates )
+    allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
-    accSwitch <- rep(0,nbIter)
-    accParam <- rep(0,nbIter)
-    allLen <- rep(NA,nbIter)
+    accSwitch <- rep( 0, nbIter )
+    accParam <- rep( 0, nbIter )
+    allLen <- rep( NA, nbIter )
 
     t0 <- Sys.time()
-    for(iter in 1:nbIter) {
-        if(iter%%100==0)
-            cat("\rIteration ", iter, "/", nbIter, "... ",
-                vague_dt(difftime(Sys.time(),t0,units="secs")/iter*(nbIter-iter),"short"),
+    for( iter in 1:nbIter ) {
+        if( iter %% 100 == 0 )
+            cat( "\rIteration ", iter, "/", nbIter, "... ",
+                vague_dt( difftime( Sys.time(), t0, units = "secs" ) / iter * ( nbIter - iter ), "short" ),
                 " remaining (est)",
-                " -- accSwitch = ", round(sum(accSwitch)/iter*100), "%",
-                " -- accParam = ", round(sum(accParam)/iter*100), "%", sep="")
+                " -- accSwitch = ", round( sum( accSwitch ) / iter * 100 ), "%",
+                " -- accParam = ", round( sum( accParam ) / iter * 100 ), "%", sep = "" )
 
         ######################################
         ## 1. Update discrete state process ##
         ######################################
-        if(updateState) {
+        if( updateState ) {
 
             # pick an individual at random for which we will update the state sequence
             id <- sample( ids, 1 )
             upState <- updateState( obs = obs[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
                                    updateProbs = updateProbs, Q = Q[[ id ]])
-            newData <- data
-            newData[[ id ]] <- upState$newData
+            newData.list <- data.list
+            newData.list[[ id ]] <- upState$newData
             newSwitch <- switch
             newSwitch[[ id ]] <- upState$newSwitch
             allLen[iter] <- upState$len
 
+            # flatten data
+            newData.df <- do.call( "rbind", newData.list )
+
             # update Hmat (rows of 0s for transitions)
-            newHmatAll <- HmatAll
-            newHmatAll[[ id ]] <- matrix( 0, nrow( newData[[ id ]] ), 4 )
-            newHmatAll[[ id ]][ which( !is.na( newData[[ id ]] [ , "x" ] ) ), ] <- Hmat[ which( track$ID == id ), ]
+            newHmatAll <- matrix( 0, nrow( newData.df ), 4 )
+            newHmatAll[ which( !is.na( newData.df [ , "x" ] ) ), ] <- Hmat
 
             # Calculate acceptance ratio
-            newllk <- oldllk
-            newllk[[ id ]] <- kalman_rcpp( data = newData[[ id ]], param = param, Hmat = newHmatAll[[ id ]] )
-            logHR <- do.call( 'sum', newllk ) - do.call( 'sum', oldllk )
+            newllk <- kalman_rcpp( data = newData.df, param = param, Hmat = newHmatAll )[1]
+            logHR <- newllk - oldllk
 
-            if(log(runif(1))<logHR) {
+            if( log( runif(1) ) < logHR ) {
                 # Accept new state sequence
                 accSwitch[iter] <- 1
                 switch <- newSwitch
-                data <- newData
-                obs <- lapply(data,function(data) {data[!is.na(data[,"x"]),]})
+                data.list <- newData.list
+                obs <- lapply( data.list, function( data ) { data[!is.na( data[,"x"] ),] } )
                 oldllk <- newllk
                 HmatAll <- newHmatAll
             }
@@ -262,12 +260,13 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
         thetasprime[ is.na( unlist( fixpar ) ) ] <- exp( thetas[ is.na( unlist( fixpar ) ) ] )
 
         # Calculate acceptance ratio
-        #TODO: check sometime how this compares in speed to just calculating them all together in the KF
-        newllk <- mclapply( ids, function( id ) { kalman_rcpp( data = data[[ id ]], param = thetasprime, Hmat = HmatAll[[ id ]] ) }, mc.cores = mc.cores )
-        names(newllk) <- ids
-        logHR <- do.call( 'sum', newllk ) + newlogprior - do.call( 'sum', oldllk ) - oldlogprior
+        data.df <- do.call( "rbind", data.list )
+        kalman <- kalman_rcpp( data = data.df, param = thetasprime, Hmat = HmatAll )
+        newllk <- kalman[1]
+        mu <- kalman[-1]
+        logHR <- newllk + newlogprior - oldllk - oldlogprior
 
-        if(log(runif(1))<logHR) {
+        if( log( runif( 1 ) ) < logHR ) {
             # Accept new parameter values
             accParam[iter] <- 1
             param <- thetasprime
@@ -282,7 +281,7 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
         ###############################
         ## 3. Update switching rates ##
         ###############################
-        Q <- lapply( ids, function( id ) { updateQ( nbStates = nbStates, data = data[[ id ]], switch = switch[[ id ]],
+        Q <- lapply( ids, function( id ) { updateQ( nbStates = nbStates, data = data.list[[ id ]], switch = switch[[ id ]],
                      priorShape = priorShape, priorRate = priorRate,
                      priorCon = priorCon ) } )
         names(Q) <- ids
@@ -290,22 +289,22 @@ runMCMC <- function(track, nbStates, nbIter, fixpar = NULL, inits, priors, props
         #########################
         ## Save posterior draw ##
         #########################
-        allparam[iter,] <- param
-        allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates*(nbStates-1) )
-        if(iter%%thinStates==0)
-            allstates[iter/thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
+        allparam[iter,] <- c( rbind( matrix( param, ncol = nbStates ), matrix( mu, ncol = nbStates ) ) )
+        allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
+        if( iter %% thinStates == 0 )
+            allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
     }
-    cat("\n")
-    cat("Elapsed: ", pretty_dt(difftime(Sys.time(),t0,units="secs")),sep="")
-    cat("\n")
-    if(adapt) {
-      cat('updateLim: [', updateLim[1],',', updateLim[2], ']\n',sep='')
-      cat('S:\n')
-      print(round(S,4))
-      cat('\n')
+    cat( "\n" )
+    cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
+    cat( "\n" )
+    if( adapt ) {
+      cat( 'updateLim: [', updateLim[1], ',', updateLim[2], ']\n', sep = '' )
+      cat( 'S:\n')
+      print( round( S, 4 ) )
+      cat( '\n' )
     }
 
-    return(list(allparam = allparam,
+    return( list(allparam = allparam,
                 allrates = allrates,
                 allstates = allstates,
                 accSwitch = accSwitch,

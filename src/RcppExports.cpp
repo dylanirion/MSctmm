@@ -7,7 +7,7 @@
 using namespace Rcpp;
 
 // kalman_rcpp
-double kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat);
+Rcpp::NumericVector kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat);
 RcppExport SEXP _MSctmm_kalman_rcpp(SEXP dataSEXP, SEXP paramSEXP, SEXP HmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

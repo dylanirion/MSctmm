@@ -8,7 +8,7 @@ kalman_rcpp(data, param, Hmat)
 }
 \arguments{
 \item{data}{Matrix of data, including columns \code{"x"}, \code{"y"},
-\code{"time"}, and \code{"state"} (in that order).}
+\code{"time"}, \code{"ID"} and \code{"state"} (in that order).}
 
 \item{param}{Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})}
 

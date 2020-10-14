@@ -15,8 +15,7 @@ runMCMC(
   tunes,
   Hmat,
   updateState = TRUE,
-  adapt = FALSE,
-  mc.cores = 1
+  adapt = FALSE
 )
 }
 \arguments{
@@ -62,9 +61,6 @@ for each row of data)}
 \item{adapt}{Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 to a target acceptance rate of 23.4\%.}
-
-\item{mc.cores}{Integer specifying number of logical cores to use for likelihood
-calculation when fitting to multiple IDs. NB. The overheads of setting up each core may make running in parallel **slower** than running on one sinlge core.}
 }
 \description{
 Run MCMC iterations
@@ -91,8 +87,7 @@ mcmc <- runMCMC( track = Pelican[,1:4], nbStates = 2, nbIter = 10000,
                 props = list( S = diag( c( 0.2, 0.2, 0.1, 0.1, 0.2, 0.2 ), 6 ), updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
                 tunes = list( thinStates = 10000 * 0.001 ),
                 #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
-                Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
-                mc.cores = 1 )
+                Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) )
 
 #parameter estimates (tau_pos1, tau_pos2, tau_vel1, tau_vel2, sigma1, sigma2)
 colMeans( mcmc$allparam[ -( 1:( nrow( mcmc$allparam ) / 2 ) ) , ] )
