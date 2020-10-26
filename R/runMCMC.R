@@ -178,7 +178,7 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
     }
     # flatten data
     data.df <- do.call( "rbind", data.list )
-    data.df <- data.df[ order( data.df[,"ID"], data.df[,"time"] ), ]
+    data.df <- data.df[ order( data.df[,"ID"], data.df[,"time"] ), c( "x", "y", "time", "ID", "state" ) ]
 
     # initialise Hmat (rows of 0s for transitions)
     HmatAll <- matrix( 0, nrow( data.df ), 4 )
@@ -261,6 +261,7 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
 
         # Calculate acceptance ratio
         data.df <- do.call( "rbind", data.list )
+        data.df <- data.df[ , c( "x", "y", "time", "ID", "state" ) ]
         kalman <- kalman_rcpp( data = data.df, param = thetasprime, Hmat = HmatAll )
         newllk <- kalman[1]
         mu <- kalman[-1]
