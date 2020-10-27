@@ -71,11 +71,13 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
   mat Q( 4, 4 );              // covariance of the process noise ( Sigma, Q )
   mat K( 4, 2, fill::zeros ); // Kalman Gain ( Gain, Kk )
   cube u( 2, 3, nbData, fill::zeros );  // measurement residual ( zRes, yk )
-  mat zRes( 2*nbData, 1, fill::zeros ); // final measurement residual
+  mat zRes( 2 * nbData, 1, fill::zeros ); // final measurement residual
   cube iF( 2, 2, nbData, fill::zeros ); // inverse of residual covariance ( isRes )
   cube uiF( 2, 2, nbData, fill::zeros ); // measurement residual * inverse of residual covariance ( uisRes )
   colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
-  mat mu( 2, nbState, fill::zeros );
+  mat mu( 2, nbState);
+  mu.fill(datum::inf);
+  mat iou( 1, 2, fill::zeros );  //matrix to track first and last index of each IOU bout
 
   double logDet;
   double llk;
@@ -90,9 +92,23 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
       // and initial state covariance matrix
       Pest = zeros( 4, 4 );
       Pest = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
-      // and if also beginning this track in IOU, reduce N by 1
-      N = std::isinf( tau_pos( S(i) - 1 ) ) ? N - 1 : N;
+    }
 
+    // if IOU, and first position of new bout or new individual, track start index and reduce N by 1
+    if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
+      if( i == 0 || S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) ) {
+        N = N - 1;
+        iou( iou.n_rows - 1, 0 ) = i;
+      } else if( i == nbData - 1 ) { //if still IOU, but last iteration, track end index
+        iou( iou.n_rows - 1, 1 ) = i - 1;
+      }
+    } else if( !std::isinf( tau_pos( S(i) - 1 ) ) && i > 0 ) {
+      if( S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) )  {
+        iou( iou.n_rows - 1, 1 ) = i - 1;
+        if( i != nbData - 1) {
+          iou.resize( iou.n_rows + 1, 2 );
+        }
+      }
     }
 
     if( i < nbData - 1 ) {
@@ -114,7 +130,7 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
       uslice( 0, 1 ) = 1;
       uslice( 1, 2 ) = 1;
       // measurement residual (zRes, u)
-      u.slice(i) = uslice - (Z * aest );                  //(2,3)
+      u.slice(i) = uslice - ( Z * aest );                  //(2,3)
       // residual covariance (sRes, F)
       mat PestZt = Pest * Z.t();                          //(4,2)
       PestZt = PestZt.replace( datum::nan, 0 );
@@ -123,7 +139,7 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
       mat F = ZPestZt + H;                                // (2,2) residual covariance ( sRes, Sk )
       iF.slice(i) = F.i();
       logdetF(i) = det(F) > 0 ? log( std::abs( det(F) ) ) : datum::inf;
-      uiF.slice(i) =  iF.slice(i) * u.slice(i).submat(0,1,1,2);    //(2,2)
+      uiF.slice(i) =  iF.slice(i) * u.slice(i).submat( 0, 1, 1, 2 );    //(2,2)
       uiF.slice(i) = uiF.slice(i).replace( datum::nan, 0 );
 
       // Kalman gain
@@ -199,37 +215,30 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
 
   // calculate state based mu
   for( int i = 0; i < nbState; i++ ) {
-    uvec ids = find( S == i + 1 );        // Find indices where state i occurs
-    uvec ids1 = ids * 2;
-    uvec ids2 = ( ids * 2 ) + 1;          // adjust indices to match previous permutation and reshaping
-    uvec ids3 = sort( join_cols( ids1, ids2 ) );  // concatenate
     mat uiFslice = uiFperm.slice(0);
     mat uSlice = uperm.slice(0);
     uvec col( 1, fill::zeros );
     uvec cols = regspace<uvec>(1,2);
-    mat D = uiFslice.cols(ids3) * uSlice.submat( ids3, col );    //(2,1)
-    mat W = uiFslice.cols(ids3) * uSlice.submat( ids3, cols );   //(2,2)
-    mat iW( 2, 2, fill::zeros );
 
-    // cheat for avoiding PDsolve, will probably have to code this and replace all inversions
-    if( std::isinf( tau_pos( i ) ) ) {
-      iW(0,0) = datum::inf;
-      iW(1,1) = datum::inf;
-    } else {
-      iW = W.i();
-    }
-
-    mu.col(i) = iW * D;  // (2,1)
-    mu = mu.replace( datum::nan, 0 );
-
-    // if IOU overwrite NaN stationary mean value with first location
-    // TODO: SHOULD I GENERATE A DIFFERENT MU FOR EACH IOU 'BOUT'??? OR AT LEAST EACH INDIVIDUAL?
-    // TODO: WHAT DOES THIS MEAN FOR LOGDET?
+    // if IOU overwrite NaN stationary mean value with first location of each IOU bout
     if( std::isinf( tau_pos( i ) ) ){
-      mu.col(i) = u.slice(0).col(0);
-    }
+      for(int j = 0; j < iou.n_rows; j++ ){
+        colvec iou_mu = u.slice( iou(j,0) ).col(0);
+        uvec iou_ids = sort( join_cols ( regspace<uvec>( iou(j,0), iou(j,1) ), regspace<uvec>( iou(j,0) + nbData, iou(j,1) + nbData ) ) );
 
-    zRes.rows(ids3) = uSlice.col(0) - ( uSlice.submat( ids3, cols ) * mu.col(i) );     //(2*nbData,1) Lines 425,426
+        zRes.rows(iou_ids) = uSlice.submat( iou_ids, col ) - ( uSlice.submat( iou_ids, cols ) * iou_mu );
+      }
+    } else {
+      uvec ids = find( S == i + 1 );        // Find indices where state i occurs
+      ids = sort( join_cols ( ids, ids + nbData ) );
+      mat D = uiFslice.cols(ids) * uSlice.submat( ids, col );    //(2,1)
+      mat W = uiFslice.cols(ids) * uSlice.submat( ids, cols );   //(2,2)
+      mat iW( 2, 2, fill::zeros );
+      iW = W.i();
+      mu.col(i) = iW * D;  // (2,1)
+
+      zRes.rows(ids) = uSlice.submat( ids, col ) - ( uSlice.submat( ids, cols ) * mu.col(i) );
+    }
   }
 
   zRes.reshape(nbData,2);
@@ -245,18 +254,23 @@ Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hm
       for (int s = 0; s < ziF.n_slices; ++s)
         ziFperm(c, s, r) = ziF(r, c, s);
   ziFperm.reshape(1, nbData * 2, 1 );
-  zRes.reshape(2*nbData,1);
+  zRes.reshape( 2 * nbData, 1 );
 
   mat sigmaK = ( ziFperm.slice(0).replace( datum::nan, 0 )  * zRes ) / ( 2 * N );
 
-  // if IOU for first position, drop first logDet because couldn't condition off initial state and will be Inf
-  logDet = std::isinf( tau_pos( S(0) - 1 ) ) ? mean( logdetF.subvec( 1, nbData - 1 ) ) : mean( logdetF );
+  // if IOU, drop first logDet for each IOU bout because couldn't condition off initial state and will be Inf
+  uvec drop = as<uvec>( wrap( iou.col(0) ) );
+  if( tau_pos.has_inf() ) {
+    logdetF.shed_rows( drop );
+  }
+
+  logDet = mean( logdetF );
 
   llk = -1 * ( as_scalar( sigmaK ) - 1 ) - logDet / 2;
   llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) / N ) );
   llk = std::isnan(llk) ? -1 * datum::inf : llk;
 
-  NumericVector out = as<NumericVector>( wrap( join_cols( as<colvec>( wrap( llk ) ), vectorise(mu) ) ) );
+  NumericVector out = as<NumericVector>( wrap( join_cols( as<colvec>( wrap( llk ) ), vectorise( mu ) ) ) );
   out.attr("dim") = R_NilValue;
 
   return out;
