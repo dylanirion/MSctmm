@@ -252,15 +252,20 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
         logHR <- newllk + newlogprior - oldllk - oldlogprior
 
         if( log( runif( 1 ) ) < logHR ) {
-            # Accept new parameter values
-            accParam[iter] <- 1
-            param <- thetasprime
-            oldllk <- newllk
-            oldlogprior <- newlogprior
+          # Accept new parameter values
+          accParam[iter] <- 1
+          param <- thetasprime
+          oldllk <- newllk
+          oldlogprior <- newlogprior
         }
 
         if( adapt & iter >= 1000 & iter <= adapt ) {
-            S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
+          S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
+          # calculate S by state instead
+          #for( i in 1:nbStates ) {
+          #  index <- seq( i, length( param ), by = nbStates )
+          #  S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])] <- adapt_S(S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])], u[index][is.na(unlist(fixpar)[index])], min( 1, exp(logHR) ), iter )
+          #}
         }
 
         ###############################
@@ -289,9 +294,9 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
       cat( '\n' )
     }
 
-    return( list(allparam = allparam,
-                allrates = allrates,
-                allstates = allstates,
-                accSwitch = accSwitch,
-                allLen = allLen))
+    return( list( allparam = allparam,
+                  allrates = allrates,
+                  allstates = allstates,
+                  accSwitch = accSwitch,
+                  allLen = allLen ) )
 }
