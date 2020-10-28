@@ -167,6 +167,10 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
     ## Loop over MCMC iterations ##
     ###############################
     allparam <- matrix( NA, nrow = nbIter, ncol = 5 * nbStates )
+    colnames(allparam) <- c( paste("tau_pos[", 1:nbStates, "]", sep = ""),
+                             paste("tau_vel[", 1:nbStates, "]", sep = ""),
+                             paste("sigma[", 1:nbStates, "]", sep = ""),
+                             paste( c( "mu_x[", "mu_y["), rep(1:nbStates, each = nbStates), c( "]", "]" ), sep = "") )
     allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
@@ -270,7 +274,7 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
         #########################
         ## Save posterior draw ##
         #########################
-        allparam[iter,] <- c( rbind( matrix( param, ncol = nbStates ), matrix( mu, ncol = nbStates ) ) )
+        allparam[iter,] <- cbind( matrix( param, ncol = 3 * nbStates ), matrix( mu, ncol =  2 * nbStates ) )
         allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         if( iter %% thinStates == 0 )
             allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
