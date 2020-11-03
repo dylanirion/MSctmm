@@ -4,7 +4,7 @@
 \alias{kalman_rcpp}
 \title{Kalman filter}
 \usage{
-kalman_rcpp(data, param, Hmat)
+kalman_rcpp(data, param, fixmu, Hmat)
 }
 \arguments{
 \item{data}{Matrix of data, including columns \code{"x"}, \code{"y"},

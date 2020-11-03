@@ -8,7 +8,8 @@ runMCMC(
   track,
   nbStates,
   nbIter,
-  fixpar = NULL,
+  fixPar = NULL,
+  fixMu = NULL,
   inits,
   priors,
   props,
@@ -25,7 +26,9 @@ runMCMC(
 
 \item{nbIter}{Number of iterations}
 
-\item{fixpar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
+\item{fixPar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
+
+\item{fixMu}{List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate}
 
 \item{inits}{List of initial parameters (tau_pos, tau_vel, sigma, Q, state)}
 

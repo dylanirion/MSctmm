@@ -4,7 +4,8 @@
 #' @param track Dataframe of data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}
 #' @param nbStates Number of states
 #' @param nbIter Number of iterations
-#' @param fixpar List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate
+#' @param fixPar List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate
+#' @param fixMu List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate
 #' @param inits List of initial parameters (tau_pos, tau_vel, sigma, Q, state)
 #' @param priors List of parameters of prior distributions, with components:
 #' \itemize{
@@ -54,7 +55,7 @@
 #' @export
 #'
 #' @useDynLib MSctmm
-runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, props, tunes, Hmat,
+runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits, priors, props, tunes, Hmat,
                      updateState = TRUE, adapt = FALSE )
 {
 
@@ -72,15 +73,23 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
     names(Q) <- unique( track$ID )
     state0 <- inits$state
 
-    if( is.null( fixpar ) ) {
+    if( is.null( fixPar ) ) {
       fixpar <- list( tau_pos = rep( NA, nbStates ),
                       tau_vel = rep( NA, nbStates ),
                       sigma = rep( NA, nbStates ) )
     } else {
-      fixpar <- fixpar
+      fixpar <- fixPar
     }
-    if(length( unlist( inits[1:3] ) )!=length( unlist( fixpar ) ) )
+    if( length( unlist( inits[1:3] ) ) != length( unlist( fixpar ) ) )
       stop( "'fixpar' has the wrong length" )
+
+    if( is.null( fixMu ) ) {
+      fixmu <- rep( list( c( NA, NA) ), nbStates )
+    } else {
+      fixmu <- fixMu
+    }
+    if( 2 * nbStates != length( unlist( fixmu ) ) )
+      stop( "'fixMu' has the wrong length" )
 
     if(is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
         stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
@@ -158,10 +167,10 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
     HmatAll[ which( !is.na( data.df[ , "x" ] ) ), ] <- Hmat
 
     # initial likelihood
-    oldllk <- kalman_rcpp( data = data.df, param = param, Hmat = HmatAll )[1]
+    oldllk <- kalman_rcpp( data = data.df, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )[1]
 
     # initial log-prior
-    oldlogprior <- sum( dnorm( log( param[ is.na(unlist(fixpar)) ] ), priorMean[ is.na(unlist(fixpar)) ], priorSD[ is.na(unlist(fixpar)) ], log = TRUE ) )
+    oldlogprior <- sum( dnorm( log( param[ is.na( unlist( fixpar ) ) ] ), priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
 
     ###############################
     ## Loop over MCMC iterations ##
@@ -209,7 +218,7 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
             newHmatAll[ which( !is.na( newData.df [ , "x" ] ) ), ] <- Hmat
 
             # Calculate acceptance ratio
-            newllk <- kalman_rcpp( data = newData.df, param = param, Hmat = newHmatAll )[1]
+            newllk <- kalman_rcpp( data = newData.df, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
             logHR <- newllk - oldllk
 
             if( log( runif(1) ) < logHR ) {
@@ -241,12 +250,12 @@ runMCMC <- function( track, nbStates, nbIter, fixpar = NULL, inits, priors, prop
             pass <- T
           }
         }
-        newlogprior <- sum(dnorm(thetas[ is.na( unlist( fixpar ) ) ],priorMean[ is.na( unlist( fixpar ) ) ],priorSD[ is.na( unlist( fixpar ) ) ],log=TRUE))
+        newlogprior <- sum( dnorm( thetas[ is.na( unlist( fixpar ) ) ], priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
 
         # Calculate acceptance ratio
         data.df <- do.call( "rbind", data.list )
         data.df <- data.df[ , c( "x", "y", "time", "ID", "state" ) ]
-        kalman <- kalman_rcpp( data = data.df, param = thetasprime, Hmat = HmatAll )
+        kalman <- kalman_rcpp( data = data.df, param = thetasprime, fixmu = unlist( fixmu ), Hmat = HmatAll )
         newllk <- kalman[1]
         mu <- kalman[-1]
         logHR <- newllk + newlogprior - oldllk - oldlogprior

@@ -7,15 +7,16 @@
 using namespace Rcpp;
 
 // kalman_rcpp
-NumericVector kalman_rcpp(arma::mat& data, arma::vec param, arma::mat& Hmat);
-RcppExport SEXP _MSctmm_kalman_rcpp(SEXP dataSEXP, SEXP paramSEXP, SEXP HmatSEXP) {
+NumericVector kalman_rcpp(arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
+RcppExport SEXP _MSctmm_kalman_rcpp(SEXP dataSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat& >::type data(dataSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type fixmu(fixmuSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type Hmat(HmatSEXP);
-    rcpp_result_gen = Rcpp::wrap(kalman_rcpp(data, param, Hmat));
+    rcpp_result_gen = Rcpp::wrap(kalman_rcpp(data, param, fixmu, Hmat));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -48,7 +49,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 3},
+    {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 4},
     {"_MSctmm_makeMu", (DL_FUNC) &_MSctmm_makeMu, 3},
     {"_MSctmm_makeSigma", (DL_FUNC) &_MSctmm_makeSigma, 4},
     {NULL, NULL, 0}

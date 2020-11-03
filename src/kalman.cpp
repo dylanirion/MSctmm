@@ -38,7 +38,7 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hmat ) {
+NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
 
   int nbData = data.n_rows;
   int N = nbData;
@@ -231,11 +231,16 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hmat ) {
     } else {
       uvec ids = find( S == i + 1 );        // Find indices where state i occurs
       ids = sort( join_cols ( ids, ids + nbData ) );
-      mat D = uiFslice.cols(ids) * uSlice.submat( ids, col );    //(2,1)
-      mat W = uiFslice.cols(ids) * uSlice.submat( ids, cols );   //(2,2)
-      mat iW( 2, 2, fill::zeros );
-      iW = W.i();
-      mu.col(i) = iW * D;  // (2,1)
+      if( R_IsNA( fixmu( i * 2 ) ) && R_IsNA( fixmu( i * 2 + 1 ) ) ) {
+        mat D = uiFslice.cols(ids) * uSlice.submat( ids, col );    //(2,1)
+        mat W = uiFslice.cols(ids) * uSlice.submat( ids, cols );   //(2,2)
+        mat iW( 2, 2, fill::zeros );
+        iW = W.i();
+        mu.col(i) = iW * D;  // (2,1)
+      } else {
+        mu(0,i) = fixmu( i * 2 );
+        mu(1,i) = fixmu( i * 2 + 1 );
+      }
 
       zRes.rows(ids) = uSlice.submat( ids, col ) - ( uSlice.submat( ids, cols ) * mu.col(i) );
     }

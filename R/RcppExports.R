@@ -33,8 +33,8 @@
 #' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
 #'
 #' @export
-kalman_rcpp <- function(data, param, Hmat) {
-    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, Hmat)
+kalman_rcpp <- function(data, param, fixmu, Hmat) {
+    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, fixmu, Hmat)
 }
 
 #' Make mu matrix
