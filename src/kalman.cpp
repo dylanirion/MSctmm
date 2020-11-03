@@ -38,7 +38,7 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-Rcpp::NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hmat ) {
+NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::mat& Hmat ) {
 
   int nbData = data.n_rows;
   int N = nbData;
