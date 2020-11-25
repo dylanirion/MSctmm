@@ -8,15 +8,15 @@ runMCMC(
   track,
   nbStates,
   nbIter,
-  fixpar = NULL,
+  fixPar = NULL,
+  fixMu = NULL,
   inits,
   priors,
   props,
   tunes,
   Hmat,
   updateState = TRUE,
-  adapt = FALSE,
-  mc.cores = 1
+  adapt = FALSE
 )
 }
 \arguments{
@@ -26,7 +26,9 @@ runMCMC(
 
 \item{nbIter}{Number of iterations}
 
-\item{fixpar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
+\item{fixPar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
+
+\item{fixMu}{List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate}
 
 \item{inits}{List of initial parameters (tau_pos, tau_vel, sigma, Q, state)}
 
@@ -62,43 +64,12 @@ for each row of data)}
 \item{adapt}{Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 to a target acceptance rate of 23.4\%.}
-
-\item{mc.cores}{Integer specifying number of logical cores to use for likelihood
-calculation when fitting to multiple IDs. NB. The overheads of setting up each core may make running in parallel **slower** than running on one sinlge core.}
 }
 \description{
 Run MCMC iterations
 }
 \examples{
 \dontrun{
-#load ctmm for data and comparison
-library(ctmm)
-#load pelican dataset
-data('pelican')
-#extract argos data with errors and store in a dataframe
-Pelican <- data.frame(x = pelican$argos$x, y = pelican$argos$y, time = pelican$argos$t, ID = 1, error = pelican$argos$VAR.xy )
-
-#run 10000 iterations of a 2 state model (no error, but see commented line for example)
-mcmc <- runMCMC( track = Pelican[,1:4], nbStates = 2, nbIter = 10000,
-                fixpar = list( tau_pos = c( NA, NA ), tau_vel = c( NA, NA ), sigma = c( NA, NA ) ),
-                inits = list( tau_pos = c( 13e6, 13e6 ),
-                              tau_vel = c( 1e4, 1e4 ),
-                              sigma = c( 2e11, 2e11 ),
-                              Q = matrix( c( -0.05, 0.05, 0.05, -0.05 ), 2 ),
-                              state = sample( 1:2, size = nrow( Pelican ), replace = TRUE ) ),
-                priors = list( mean = log( c( 9e6, 9e6, 1e4, 1e4, 2e11, 2e11 ) ),
-                               sd = c( 2, 2, 2, 2, 2, 2 ), shape = 2, rate = 10, con = 0 ),
-                props = list( S = diag( c( 0.2, 0.2, 0.1, 0.1, 0.2, 0.2 ), 6 ), updateLim = c( 3, 150 ), updateProbs = rep( 1/148, 148 ) ),
-                tunes = list( thinStates = 10000 * 0.001 ),
-                #Hmat = cbind( Pelican$error, Pelican$error, matrix( rep( c( 0, 0 ), nrow( Pelican ) ), ncol = 2 ) ),
-                Hmat = matrix( rep( c( 0, 0, 0 ,0 ), nrow( Pelican ) ), ncol = 4 ) ,
-                mc.cores = 1 )
-
-#parameter estimates (tau_pos1, tau_pos2, tau_vel1, tau_vel2, sigma1, sigma2)
-colMeans( mcmc$allparam[ -( 1:( nrow( mcmc$allparam ) / 2 ) ) , ] )
-
-#state sequence
-round( colMeans( mcmc$allstates[ -( 1:nrow( mcmc$allstates ) / 2 ), ] ) )
 }
 
 }

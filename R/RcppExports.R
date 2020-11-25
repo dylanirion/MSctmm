@@ -8,8 +8,9 @@
 #'
 #' @name kalman_rcpp
 #' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-#' \code{"time"}, and \code{"state"} (in that order).
+#' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
 #' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
+#' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
 #'
@@ -33,7 +34,53 @@
 #' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
 #'
 #' @export
-kalman_rcpp <- function(data, param, Hmat) {
-    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, Hmat)
+kalman_rcpp <- function(data, param, fixmu, Hmat) {
+    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, fixmu, Hmat)
+}
+
+#' Make mu matrix
+#'
+#' This code is adapted from the langevin function in the R package ctmm (Calabrese et al., 2016).
+#' It is an R wrapper for the internal makeT function
+#'
+#' @name makeMu
+#' @param tau_pos Parameter \eqn{tau[pos]} of the movement process
+#' @param tau_vel Parameter \eqn{tau[vel]} of the movement process
+#' @param dt Time interval
+#'
+#' @return Green's Function matrix
+#'
+#' @references
+#' Calabrese, J.M., Fleming, C.H. and Gurarie, E. (2016).
+#' ctmm: an r package for analyzing animal relocation data as a continuous‐time stochastic process.
+#' Methods Ecol Evol, 7: 1124-1132. doi:10.1111/2041-210X.12559
+#'
+#' @export
+makeMu <- function(tau_pos, tau_vel, dt) {
+    .Call('_MSctmm_makeMu', PACKAGE = 'MSctmm', tau_pos, tau_vel, dt)
+}
+
+#' Make covariance matrix
+#'
+#' This code is adapted from the langevin function in the R package ctmm (Calabrese et al., 2016).
+#' It is an R wrapper for the internal makeQ function
+#'
+#' @name makeSigma
+#' @param tau_pos Parameter \eqn{tau[pos]} of the movement process
+#' @param tau_vel Parameter \eqn{tau[vel]} of the movement process
+#' @param sigma Parameter \eqn{sigma} of the movement process
+#' @param dt Time interval
+#'
+#' @return Covariance Matrix
+#'
+#' @references
+#' Calabrese, J.M., Fleming, C.H. and Gurarie, E. (2016).
+#' ctmm: an r package for analyzing animal relocation data as a continuous‐time stochastic process.
+#' Methods Ecol Evol, 7: 1124-1132. doi:10.1111/2041-210X.12559
+#'
+#' This code is adapted from the langevin function in the R package ctmm (Calabrese et al., 2016).
+#' @export
+makeSigma <- function(tau_pos, tau_vel, sigma, dt) {
+    .Call('_MSctmm_makeSigma', PACKAGE = 'MSctmm', tau_pos, tau_vel, sigma, dt)
 }
 

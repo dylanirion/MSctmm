@@ -56,12 +56,12 @@ updateState <- function(obs, switch, updateLim, updateProbs=NULL, Q)
     if(length(fakeSwitch)>0)
         newSwitch <- newSwitch[-fakeSwitch,]
     if(nrow(newSwitch)) {
-        newData <- rbind(obs,cbind(NA,NA,newSwitch))
+        newData <- rbind( obs, cbind( NA, NA, newSwitch[,"time"], rep(obs[1,"ID"],nrow(newSwitch)), newSwitch[,"state"] ) )
     } else {
         newData <- obs
     }
 
-    newData <- newData[order(newData[,"time"]),]
+    newData <- newData[order(newData[,"time"]),c("x","y","time","ID","state")]
 
     # update state sequence for new switches
     ind <- which(newData[,"time"]>Tbeg & newData[,"time"]<Tend)
