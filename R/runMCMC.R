@@ -29,11 +29,9 @@
 #' }
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
-#'
 #' @param updateState Logical. If FALSE, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
-#'
-#' @param adapt Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+#' @param adapt Integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 #' by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 #' to a target acceptance rate of 23.4\%.
 #'
@@ -66,11 +64,9 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     tau_pos <- inits$tau_pos
     tau_vel <- inits$tau_vel
     #NB considering only isotropic case for now, this will eventually need to be a matrix
-    #kalman_rcpp and MakeQ will need to accept a matrix
+    #kalman_rcpp and MakeQ/Sigma will need to accept a matrix
     sigma <- inits$sigma
     param <- c( tau_pos, tau_vel, sigma )
-    Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
-    names(Q) <- unique( track$ID )
     state0 <- inits$state
 
     if( is.null( fixPar ) ) {
@@ -90,9 +86,6 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     }
     if( 2 * nbStates != length( unlist( fixmu ) ) )
       stop( "'fixMu' has the wrong length" )
-
-    if(is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
-        stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
 
     # Kalman filter parameters
     if(is.null(Hmat))
@@ -134,40 +127,53 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
       track$ID <- 1
     }
 
-    ids <- as.character( unique( track$ID ) )
+    track$ID <- as.numeric( as.factor( track$ID ) )
+
+    ids <- unique( track$ID )
     obs <- list()
     switch <- list()
     data.list <- list()
+
+    if( length(inits$Q) == length(ids) & class(inits$Q) == "list" ) {
+      Q <- inits$Q
+    } else {
+      Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
+    }
+    names(Q) <- unique( track$ID )
+
+    if(is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
+      stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
 
     for( i in ids ) {
       nbObs <- nrow(track[ which( track$ID == i ), ])
       obs[[ i ]] <- matrix( c( track[ which( track$ID == i ), "x" ],
                                track[ which( track$ID == i ), "y" ],
-                               track[ which( track$ID == i ), "ID" ],
                                track[ which( track$ID == i ), "time" ],
+                               as.numeric( track[ which( track$ID == i ), "ID" ] ),
                                state0[ which( track$ID == i )  ] ),
                             ncol = 5 )
-      colnames( obs[[ i ]] ) <- c( "x", "y", "ID", "time", "state" )
+      colnames( obs[[ i ]] ) <- c( "x", "y", "time", "ID",  "state" )
       indSwitch <- which( obs[[ i ]][ -1, "state" ] != obs[[ i ]][ -nbObs, "state" ] ) + 1
       switch[[ i ]] <- matrix( c( obs[[ i ]][ indSwitch, "time" ] - 0.001, rle( obs[[ i ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
       colnames( switch[[ i ]] ) <- c( "time", "state" )
 
       if( !all( is.na( switch[[ i ]] ) ) ) {
-        data.list[[ i ]] <- rbind( obs[[ i ]] ,cbind( NA, NA, switch[[ i ]] ) )
+        data.list[[ i ]] <- rbind( obs[[ i ]][,c( "x", "y", "time", "ID",  "state" )] ,cbind( NA, NA, switch[[ i ]][,"time"], i, switch[[ i ]][,"state"] ) )
+        data.list[[ i ]] <- data.list[[ i ]][ order( data.list[[ i ]][,"time"] ),]
       } else {
-        data.list[[ i ]] <- obs[[ i ]]
+        data.list[[ i ]] <- obs[[ i ]][,c( "x", "y", "time", "ID",  "state" )]
       }
     }
     # flatten data
-    data.df <- do.call( "rbind", data.list )
-    data.df <- data.df[ order( data.df[,"ID"], data.df[,"time"] ), c( "x", "y", "time", "ID", "state" ) ]
+    data.mat <- do.call( "rbind", data.list )
+    data.mat <- data.mat[ , c( "x", "y", "time", "ID", "state" ) ]
 
     # initialise Hmat (rows of 0s for transitions)
-    HmatAll <- matrix( 0, nrow( data.df ), 4 )
-    HmatAll[ which( !is.na( data.df[ , "x" ] ) ), ] <- Hmat
+    HmatAll <- matrix( 0, nrow( data.mat ), 4 )
+    HmatAll[ which( !is.na( data.mat[ , "x" ] ) ), ] <- Hmat
 
     # initial likelihood
-    oldllk <- kalman_rcpp( data = data.df, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )[1]
+    oldllk <- kalman_rcpp( data = data.mat, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )[1]
 
     # initial log-prior
     oldlogprior <- sum( dnorm( log( param[ is.na( unlist( fixpar ) ) ] ), priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
@@ -180,10 +186,10 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
                              paste("tau_vel[", 1:nbStates, "]", sep = ""),
                              paste("sigma[", 1:nbStates, "]", sep = ""),
                              paste( c( "mu_x[", "mu_y["), rep(1:nbStates, each = nbStates), c( "]", "]" ), sep = "") )
+    accParam <- rep( 0, nbIter )
     allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
-    accParam <- rep( 0, nbIter )
     allLen <- rep( NA, nbIter )
 
     t0 <- Sys.time()
@@ -205,20 +211,22 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
             upState <- updateState( obs = obs[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
                                    updateProbs = updateProbs, Q = Q[[ id ]])
             newData.list <- data.list
-            newData.list[[ id ]] <- upState$newData
+            newData.list[[ id ]] <- upState$newData[,c( "x", "y", "time", "ID",  "state" )]
+            newData.list[[ id ]] <- newData.list[[ id ]][ order( newData.list[[id]][,"time"] ),]
             newSwitch <- switch
             newSwitch[[ id ]] <- upState$newSwitch
             allLen[iter] <- upState$len
 
             # flatten data
-            newData.df <- do.call( "rbind", newData.list )
+            newData.mat <- do.call( "rbind", newData.list )
+            newData.mat <- newData.mat[ , c( "x", "y", "time", "ID", "state" ) ]
 
             # update Hmat (rows of 0s for transitions)
-            newHmatAll <- matrix( 0, nrow( newData.df ), 4 )
-            newHmatAll[ which( !is.na( newData.df [ , "x" ] ) ), ] <- Hmat
+            newHmatAll <- matrix( 0, nrow( newData.mat ), 4 )
+            newHmatAll[ which( !is.na( newData.mat [ , "x" ] ) ), ] <- Hmat
 
             # Calculate acceptance ratio
-            newllk <- kalman_rcpp( data = newData.df, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
+            newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
             logHR <- newllk - oldllk
 
             if( log( runif(1) ) < logHR ) {
@@ -253,9 +261,9 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         newlogprior <- sum( dnorm( thetas[ is.na( unlist( fixpar ) ) ], priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
 
         # Calculate acceptance ratio
-        data.df <- do.call( "rbind", data.list )
-        data.df <- data.df[ , c( "x", "y", "time", "ID", "state" ) ]
-        kalman <- kalman_rcpp( data = data.df, param = thetasprime, fixmu = unlist( fixmu ), Hmat = HmatAll )
+        data.mat <- do.call( "rbind", data.list )
+        data.mat <- data.mat[ , c( "x", "y", "time", "ID", "state" ) ]
+        kalman <- kalman_rcpp( data = data.mat, param = thetasprime, fixmu = unlist( fixmu ), Hmat = HmatAll )
         newllk <- kalman[1]
         mu <- kalman[-1]
         logHR <- newllk + newlogprior - oldllk - oldlogprior
@@ -269,35 +277,36 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         }
 
         if( adapt & iter >= 1000 & iter <= adapt ) {
-          S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
+          #S[is.na(unlist(fixpar)), is.na(unlist(fixpar))] <- adapt_S(S[is.na(unlist(fixpar)), is.na(unlist(fixpar))], u[is.na(unlist(fixpar))], min( 1, exp(logHR) ), iter )
           # calculate S by state instead
-          #for( i in 1:nbStates ) {
-          #  index <- seq( i, length( param ), by = nbStates )
-          #  S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])] <- adapt_S(S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])], u[index][is.na(unlist(fixpar)[index])], min( 1, exp(logHR) ), iter )
-          #}
+          for( i in 1:nbStates ) {
+            index <- seq( i, length( param ), by = nbStates )
+            S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])] <- adapt_S(S[index,index][is.na(unlist(fixpar)[index]), is.na(unlist(fixpar)[index])], u[index][is.na(unlist(fixpar)[index])], min( 1, exp(logHR) ), iter )
+          }
         }
 
         ###############################
         ## 3. Update switching rates ##
         ###############################
         Q <- lapply( ids, function( id ) { updateQ( nbStates = nbStates, data = data.list[[ id ]], switch = switch[[ id ]],
-                     priorShape = priorShape, priorRate = priorRate,
-                     priorCon = priorCon ) } )
+                                                    priorShape = priorShape, priorRate = priorRate,
+                                                    priorCon = priorCon ) } )
         names(Q) <- ids
 
         #########################
         ## Save posterior draw ##
         #########################
         allparam[iter,] <- cbind( matrix( param, ncol = 3 * nbStates ), matrix( mu, ncol =  2 * nbStates ) )
-        allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
-        if( iter %% thinStates == 0 )
-            allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
+        if( iter %% thinStates == 0 ){
+
+          allrates[ iter / thinStates, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
+          allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
+        }
     }
     cat( "\n" )
     cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
     cat( "\n" )
     if( adapt ) {
-      cat( 'updateLim: [', updateLim[1], ',', updateLim[2], ']\n', sep = '' )
       cat( 'S:\n')
       print( round( S, 4 ) )
       cat( '\n' )

@@ -10,6 +10,7 @@
 #' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
 #' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
 #' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
+#' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
 #'

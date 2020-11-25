@@ -23,8 +23,8 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-NumericMatrix makeMu( double tau_pos, double tau_vel, double dt ) {
-  return wrap( makeT( tau_pos, tau_vel, dt ) );
+arma::mat makeMu( double tau_pos, double tau_vel, double dt ) {
+  return makeT( tau_pos, tau_vel, dt );
 }
 
 
@@ -51,6 +51,6 @@ NumericMatrix makeMu( double tau_pos, double tau_vel, double dt ) {
 //' This code is adapted from the langevin function in the R package ctmm (Calabrese et al., 2016).
 //' @export
 // [[Rcpp::export]]
-NumericMatrix makeSigma( double tau_pos, double tau_vel, double sigma, double dt ) {
-  return wrap( makeQ( tau_pos, tau_vel, sigma, dt ) );
+arma::mat makeSigma( double tau_pos, double tau_vel, double sigma, double dt ) {
+  return makeQ( tau_pos, tau_vel, sigma, dt );
 }

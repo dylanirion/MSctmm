@@ -12,6 +12,8 @@ kalman_rcpp(data, param, fixmu, Hmat)
 
 \item{param}{Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})}
 
+\item{fixmu}{Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})}
+
 \item{Hmat}{Matrix of observation error variance (four columns, and one row
 for each row of data)}
 }

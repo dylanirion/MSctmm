@@ -21,7 +21,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // makeMu
-NumericMatrix makeMu(double tau_pos, double tau_vel, double dt);
+arma::mat makeMu(double tau_pos, double tau_vel, double dt);
 RcppExport SEXP _MSctmm_makeMu(SEXP tau_posSEXP, SEXP tau_velSEXP, SEXP dtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -34,7 +34,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // makeSigma
-NumericMatrix makeSigma(double tau_pos, double tau_vel, double sigma, double dt);
+arma::mat makeSigma(double tau_pos, double tau_vel, double sigma, double dt);
 RcppExport SEXP _MSctmm_makeSigma(SEXP tau_posSEXP, SEXP tau_velSEXP, SEXP sigmaSEXP, SEXP dtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
