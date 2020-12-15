@@ -134,7 +134,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     switch <- list()
     data.list <- list()
 
-    if( length(inits$Q) == length(ids) & class(inits$Q) == "list" ) {
+    if( length(inits$Q) == length(ids) & "list" %in% class(inits$Q) ) {
       Q <- inits$Q
     } else {
       Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
@@ -185,7 +185,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     colnames(allparam) <- c( paste("tau_pos[", 1:nbStates, "]", sep = ""),
                              paste("tau_vel[", 1:nbStates, "]", sep = ""),
                              paste("sigma[", 1:nbStates, "]", sep = ""),
-                             paste( c( "mu_x[", "mu_y["), rep(1:nbStates, each = nbStates), c( "]", "]" ), sep = "") )
+                             paste( c( "mu_x[", "mu_y["), rep(1:nbStates, each = 2 ), c( "]", "]" ), sep = "") )
     accParam <- rep( 0, nbIter )
     allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
@@ -194,13 +194,14 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
 
     t0 <- Sys.time()
     for( iter in 1:nbIter ) {
-        if( iter %% 100 == 0 )
+        if( iter %% 100 == 0 ) {
             cat( "\rIteration ", iter, "/", nbIter, "... ",
                 vague_dt( difftime( Sys.time(), t0, units = "secs" ) / iter * ( nbIter - iter ), "short" ),
                 " remaining (est)",
                 " -- accSwitch = ", round( sum( accSwitch ) / iter * 100 ), "%",
-                " -- accParam = ", round( sum( accParam ) / iter * 100 ), "%", sep = "" )
-
+                " -- accParam = ", round( sum( accParam ) / iter * 100 ), "%",
+                "          ", sep = "" )
+        }
         ######################################
         ## 1. Update discrete state process ##
         ######################################
@@ -246,10 +247,10 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ###################################
         pass = F
         while( !pass ) {  # ensure tau_p >= tau_v
-          # On working scale
+          # On working scale [-Inf,Inf]
           u <- rnorm( length( param ) )
           thetas <- log( param ) + as.vector( S %*% u )
-          # On natural scale
+          # On natural scale [0, Inf ]
           thetasprime <- unlist( fixpar )
           thetasprime[ is.na( unlist( fixpar ) ) ] <- exp( thetas[ is.na( unlist( fixpar ) ) ] )
 
@@ -297,9 +298,8 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ## Save posterior draw ##
         #########################
         allparam[iter,] <- cbind( matrix( param, ncol = 3 * nbStates ), matrix( mu, ncol =  2 * nbStates ) )
+        allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         if( iter %% thinStates == 0 ){
-
-          allrates[ iter / thinStates, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
           allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
         }
     }
