@@ -6,7 +6,7 @@
 #' @param nbIter Number of iterations
 #' @param fixPar List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate
 #' @param fixMu List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate
-#' @param inits List of initial parameters (tau_pos, tau_vel, sigma, Q, state)
+#' @param inits List of initial parameters (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}, \code{"Q"}, \code{"state"})
 #' @param priors List of parameters of prior distributions, with components:
 #' \itemize{
 #'   \item{"mean":} Vector of means for normal priors on movement parameters, of length \code{"3*nbStates"}
@@ -15,6 +15,7 @@
 #'   \item{"rate":} Vector of rates of gamma priors for the transition rates
 #'   \item{"con":} Vector of concentrations of Dirichlet priors for transition probabilities
 #' }
+#' @param knownStates Vector of known states with \code{"NA"} or those to estimate.
 #' @param props List of parameters of proposal distributions, with components:
 #' \itemize{
 #'   \item{"S":} Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
@@ -29,7 +30,7 @@
 #' }
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
-#' @param updateState Logical. If FALSE, the state process is not updated
+#' @param updateState Logical. If \code{"FALSE"}, the state process is not updated
 #' (for exploratory analysis only, useful for testing single state models)
 #' @param adapt Integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 #' by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
@@ -53,7 +54,8 @@
 #' @export
 #'
 #' @useDynLib MSctmm
-runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits, priors, props, tunes, Hmat,
+runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits, priors,
+                     knownStates, props, tunes, Hmat,
                      updateState = TRUE, adapt = FALSE )
 {
 
@@ -68,6 +70,9 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     sigma <- inits$sigma
     param <- c( tau_pos, tau_vel, sigma )
     state0 <- inits$state
+    #overwrite state inits with knownStates
+    state0[which( !is.na( knownStates ) )] <- knownStates[which( !is.na( knownStates ) )]
+
 
     if( is.null( fixPar ) ) {
       fixpar <- list( tau_pos = rep( NA, nbStates ),
@@ -131,6 +136,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
 
     ids <- unique( track$ID )
     obs <- list()
+    known <- list()
     switch <- list()
     data.list <- list()
 
@@ -152,6 +158,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
                                as.numeric( track[ which( track$ID == i ), "ID" ] ),
                                state0[ which( track$ID == i )  ] ),
                             ncol = 5 )
+      known[[ i ]] <- knownStates[ which( track$ID == i )  ]
       colnames( obs[[ i ]] ) <- c( "x", "y", "time", "ID",  "state" )
       indSwitch <- which( obs[[ i ]][ -1, "state" ] != obs[[ i ]][ -nbObs, "state" ] ) + 1
       switch[[ i ]] <- matrix( c( obs[[ i ]][ indSwitch, "time" ] - 0.001, rle( obs[[ i ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
@@ -209,7 +216,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
 
             # pick an individual at random for which we will update the state sequence
             id <- sample( ids, 1 )
-            upState <- updateState( obs = obs[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
+            upState <- updateState( obs = obs[[ id ]], knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
                                    updateProbs = updateProbs, Q = Q[[ id ]])
             newData.list <- data.list
             newData.list[[ id ]] <- upState$newData[,c( "x", "y", "time", "ID",  "state" )]
@@ -224,7 +231,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
 
             # update Hmat (rows of 0s for transitions)
             newHmatAll <- matrix( 0, nrow( newData.mat ), 4 )
-            newHmatAll[ which( !is.na( newData.mat [ , "x" ] ) ), ] <- Hmat
+            newHmatAll[ which( !is.na( newData.mat[ , "x" ] ) ), ] <- Hmat
 
             # Calculate acceptance ratio
             newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
@@ -239,7 +246,6 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
                 oldllk <- newllk
                 HmatAll <- newHmatAll
             }
-
         }
 
         ###################################

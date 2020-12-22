@@ -2,6 +2,7 @@
 #' Update state sequence
 #'
 #' @param obs Matrix of observations, with columns "x", "y", "time", and "state"
+#' @param knownStates Vector of known, fixed states
 #' @param switch Matrix of state switches, with columns "time" and "state"
 #' @param updateLim Vector of two elements: min and max length of updated interval
 #' (each an integer, corresponding to a number of observations)
@@ -23,7 +24,7 @@
 #'
 #' @importFrom ECctmc sample_path
 #' @export
-updateState <- function(obs, switch, updateLim, updateProbs=NULL, Q)
+updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q)
 {
     nbObs <- nrow(obs)
 
@@ -70,6 +71,9 @@ updateState <- function(obs, switch, updateLim, updateProbs=NULL, Q)
             newData[t,"state"] <- newData[t-1,"state"]
         }
     }
+
+    #knownStates override
+    newData[which( !is.na( newData[,"x"] ) ),][which( !is.na( knownStates ) ), "state"] <- knownStates[which( !is.na( knownStates ) )]
 
     return(list(newSwitch=newSwitch, newData=newData, len=len))
 }

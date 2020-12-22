@@ -80,6 +80,7 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   cube ziF( 2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
   cube mu( 2, 1, nbData, fill::zeros);
   mat iou( 1, 2, fill::zeros );  //matrix to track first and last index of each IOU bout
+  bool iou_open = false;
   colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
   colvec out( 2 * nbState + 1 );
   out.fill( NA_REAL );
@@ -98,26 +99,42 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
       Pest = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
     }
 
-    // if IOU, and first position of new bout or new individual, track start index and reduce N by 1
+    // if current state is IOU
     if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
+      // and first position or first position of new bout or individual
       if( i == 0 || S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) ) {
+        //reduce N by 1
         N = N - 1;
-        // if it's an augmented position ( i.e. NA ), use the next index
+        //check if we need to close a bout and add a new one
+        if( iou_open ) {
+          // track end index
+          iou( iou.n_rows - 1, 1 ) = i - 1;
+          // increase size
+          iou.resize( iou.n_rows + 1, 2 );
+          iou_open = false;
+        }
+        // if it's an augmented position ( i.e. NA ), use the next index as start
         if( R_IsNA( X( i, 0 ) ) ) {
           iou( iou.n_rows - 1, 0 ) = i + 1;
+          iou_open = true;
         } else {
+          // track start index
           iou( iou.n_rows - 1, 0 ) = i;
+          // track iou_open
+          iou_open = true;
         }
-
-      } else if( i == nbData - 1 ) { //if still IOU, but last iteration, track end index
+      // or last iteration, track end index
+      } else if( i == nbData - 1 ) {
         iou( iou.n_rows - 1, 1 ) = i - 1;
+        iou_open = false;
       }
+    // else if not IOU
     } else if( !std::isinf( tau_pos( S(i) - 1 ) ) && i > 0 ) {
+      // but the state switched or the individual changed
       if( S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) )  {
+        //close the last bout index
         iou( iou.n_rows - 1, 1 ) = i - 1;
-        if( i != nbData - 1) {
-          iou.resize( iou.n_rows + 1, 2 );
-        }
+        iou_open = false;
       }
     }
 
