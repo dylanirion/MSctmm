@@ -12,6 +12,7 @@ runMCMC(
   fixMu = NULL,
   inits,
   priors,
+  knownStates,
   props,
   tunes,
   Hmat,
@@ -30,7 +31,7 @@ runMCMC(
 
 \item{fixMu}{List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate}
 
-\item{inits}{List of initial parameters (tau_pos, tau_vel, sigma, Q, state)}
+\item{inits}{List of initial parameters (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}, \code{"Q"}, \code{"state"})}
 
 \item{priors}{List of parameters of prior distributions, with components:
 \itemize{
@@ -40,6 +41,8 @@ runMCMC(
   \item{"rate":} Vector of rates of gamma priors for the transition rates
   \item{"con":} Vector of concentrations of Dirichlet priors for transition probabilities
 }}
+
+\item{knownStates}{Vector of known states with \code{"NA"} or those to estimate.}
 
 \item{props}{List of parameters of proposal distributions, with components:
 \itemize{
@@ -58,10 +61,10 @@ of memory limitations)
 \item{Hmat}{Matrix of observation error variance (four columns, and one row
 for each row of data)}
 
-\item{updateState}{Logical. If FALSE, the state process is not updated
+\item{updateState}{Logical. If \code{"FALSE"}, the state process is not updated
 (for exploratory analysis only, useful for testing single state models)}
 
-\item{adapt}{Integer. (Experimental) If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+\item{adapt}{Integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 to a target acceptance rate of 23.4\%.}
 }

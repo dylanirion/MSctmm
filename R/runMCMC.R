@@ -145,30 +145,30 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     } else {
       Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
     }
-    names(Q) <- unique( track$ID )
+    names(Q) <- ids
 
     if(is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
       stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
 
-    for( i in ids ) {
-      nbObs <- nrow(track[ which( track$ID == i ), ])
-      obs[[ i ]] <- matrix( c( track[ which( track$ID == i ), "x" ],
-                               track[ which( track$ID == i ), "y" ],
-                               track[ which( track$ID == i ), "time" ],
-                               as.numeric( track[ which( track$ID == i ), "ID" ] ),
-                               state0[ which( track$ID == i )  ] ),
+    for( id in ids ) {
+      nbObs <- nrow(track[ which( track$ID == id ), ])
+      obs[[ id ]] <- matrix( c( track[ which( track$ID == id ), "x" ],
+                               track[ which( track$ID == id ), "y" ],
+                               track[ which( track$ID == id ), "time" ],
+                               as.numeric( track[ which( track$ID == id ), "ID" ] ),
+                               state0[ which( track$ID == id )  ] ),
                             ncol = 5 )
-      known[[ i ]] <- knownStates[ which( track$ID == i )  ]
-      colnames( obs[[ i ]] ) <- c( "x", "y", "time", "ID",  "state" )
-      indSwitch <- which( obs[[ i ]][ -1, "state" ] != obs[[ i ]][ -nbObs, "state" ] ) + 1
-      switch[[ i ]] <- matrix( c( obs[[ i ]][ indSwitch, "time" ] - 0.001, rle( obs[[ i ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
-      colnames( switch[[ i ]] ) <- c( "time", "state" )
+      known[[ id ]] <- knownStates[ which( track$ID == id )  ]
+      colnames( obs[[ id ]] ) <- c( "x", "y", "time", "ID",  "state" )
+      indSwitch <- which( obs[[ id ]][ -1, "state" ] != obs[[ id ]][ -nbObs, "state" ] ) + 1
+      switch[[ id ]] <- matrix( c( obs[[ id ]][ indSwitch, "time" ] - 0.001, rle( obs[[ id ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
+      colnames( switch[[ id ]] ) <- c( "time", "state" )
 
-      if( !all( is.na( switch[[ i ]] ) ) ) {
-        data.list[[ i ]] <- rbind( obs[[ i ]][,c( "x", "y", "time", "ID",  "state" )] ,cbind( NA, NA, switch[[ i ]][,"time"], i, switch[[ i ]][,"state"] ) )
-        data.list[[ i ]] <- data.list[[ i ]][ order( data.list[[ i ]][,"time"] ),]
+      if( !all( is.na( switch[[ id ]] ) ) ) {
+        data.list[[ id ]] <- rbind( obs[[ id ]][,c( "x", "y", "time", "ID",  "state" )] ,cbind( NA, NA, switch[[ id ]][,"time"], id, switch[[ id ]][,"state"] ) )
+        data.list[[ id ]] <- data.list[[ id ]][ order( data.list[[ id ]][,"time"] ),]
       } else {
-        data.list[[ i ]] <- obs[[ i ]][,c( "x", "y", "time", "ID",  "state" )]
+        data.list[[ id ]] <- obs[[ id ]][,c( "x", "y", "time", "ID",  "state" )]
       }
     }
     # flatten data
@@ -213,11 +213,9 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ## 1. Update discrete state process ##
         ######################################
         if( updateState ) {
-
-            # pick an individual at random for which we will update the state sequence
-            id <- sample( ids, 1 )
+          for( id in ids ) {
             upState <- updateState( obs = obs[[ id ]], knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
-                                   updateProbs = updateProbs, Q = Q[[ id ]])
+                                    updateProbs = updateProbs, Q = Q[[ id ]])
             newData.list <- data.list
             newData.list[[ id ]] <- upState$newData[,c( "x", "y", "time", "ID",  "state" )]
             newData.list[[ id ]] <- newData.list[[ id ]][ order( newData.list[[id]][,"time"] ),]
@@ -232,20 +230,21 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
             # update Hmat (rows of 0s for transitions)
             newHmatAll <- matrix( 0, nrow( newData.mat ), 4 )
             newHmatAll[ which( !is.na( newData.mat[ , "x" ] ) ), ] <- Hmat
+          }
 
-            # Calculate acceptance ratio
-            newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
-            logHR <- newllk - oldllk
+          # Calculate acceptance ratio
+          newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
+          logHR <- newllk - oldllk
 
-            if( log( runif(1) ) < logHR ) {
-                # Accept new state sequence
-                accSwitch[iter] <- 1
-                switch <- newSwitch
-                data.list <- newData.list
-                obs <- lapply( data.list, function( data ) { data[!is.na( data[,"x"] ),] } )
-                oldllk <- newllk
-                HmatAll <- newHmatAll
-            }
+          if( log( runif(1) ) < logHR ) {
+            # Accept new state sequence
+            accSwitch[iter] <- 1
+            switch <- newSwitch
+            data.list <- newData.list
+            obs <- lapply( data.list, function( data ) { data[!is.na( data[,"x"] ),] } )
+            oldllk <- newllk
+            HmatAll <- newHmatAll
+          }
         }
 
         ###################################

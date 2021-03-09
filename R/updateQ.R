@@ -33,12 +33,17 @@ updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon)
     # sample transition probabilities
     allCounts <- table( factor( data[-nrow( data ), "state"], levels = 1:nbStates ), factor( data[-1,"state"], levels = 1:nbStates ) )
     nonDiagCounts <- matrix(t(allCounts)[!diag(nbStates)], nrow=nbStates, byrow=TRUE)
-    trProbs <- t(apply(nonDiagCounts, 1, function(x)
-        rdirichlet(n = 1, alpha = x + priorCon)))
-    trProbs[is.nan(trProbs)] <- 1 / ( nbStates - 1 )    # stopgap for no-switch cases
+    trProbs <- t(apply(nonDiagCounts, 1, function(x) rdirichlet( n = 1, alpha = x + priorCon ) ) )
+    # there is an NaN issue when any states are not observed
+    # we can either set these all equal to 1/(nbStates-1) or I think more realistically,
+    # randomly assign all the probability to one transition
+    for( i in which( is.nan( rowSums( trProbs ) ) ) ) {
+      trProbs[i,] <- sample( c( 1, rep( 0, nbStates - 2 ) ), nbStates - 1, F )
+    }
 
     # update generator matrix from rates and transition probs
     Q <- -diag(nbStates)
+    Q <- t(Q)
     Q[!Q] <- t(trProbs)
     Q <- t(Q*rep(r,each=nbStates))
 

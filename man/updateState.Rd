@@ -4,10 +4,12 @@
 \alias{updateState}
 \title{Update state sequence}
 \usage{
-updateState(obs, switch, updateLim, updateProbs = NULL, Q)
+updateState(obs, knownStates, switch, updateLim, updateProbs = NULL, Q)
 }
 \arguments{
 \item{obs}{Matrix of observations, with columns "x", "y", "time", and "state"}
+
+\item{knownStates}{Vector of known, fixed states}
 
 \item{switch}{Matrix of state switches, with columns "time" and "state"}
 
