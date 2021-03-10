@@ -198,6 +198,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
     allLen <- matrix( NA, nrow = nbIter, ncol = length( ids ) )
+    allnLLk <- rep( NA, nbIter )
 
     t0 <- Sys.time()
     for( iter in 1:nbIter ) {
@@ -303,10 +304,11 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ## Save posterior draw ##
         #########################
         allparam[iter,] <- cbind( matrix( param, ncol = 3 * nbStates ), matrix( mu, ncol =  2 * nbStates ) )
-        allrates[ iter , , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
+        allrates[iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         if( iter %% thinStates == 0 ){
           allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
         }
+        allnLLk[iter] <- oldllk
     }
     cat( "\n" )
     cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
