@@ -28,7 +28,7 @@ updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon)
     # sample rates out of each state
     shape <- priorShape + countIntervals
     rate <- priorRate + timeInStates
-    r <- rgamma(n = nbStates, shape = shape, rate = rate)
+    r <- rgamma( n = nbStates, shape = shape, rate = rate )
 
     # sample transition probabilities
     allCounts <- table( factor( data[-nrow( data ), "state"], levels = 1:nbStates ), factor( data[-1,"state"], levels = 1:nbStates ) )
@@ -43,9 +43,8 @@ updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon)
 
     # update generator matrix from rates and transition probs
     Q <- -diag(nbStates)
-    Q <- t(Q)
     Q[!Q] <- t(trProbs)
-    Q <- t(Q*rep(r,each=nbStates))
+    Q <- t( Q * rep( r, each = nbStates ) )
 
     return(Q)
 }

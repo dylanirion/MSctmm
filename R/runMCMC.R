@@ -121,7 +121,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         stop("'updateProbs' has the wrong length")
 
     # unpack tuning parameters
-    thinStates <- tunes$thinStates
+    thinStates <- ifelse( is.null( tunes$thinStates ), 1, tunes$thinStates )
 
     ####################
     ## Initialisation ##
@@ -197,7 +197,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
-    allLen <- rep( NA, nbIter )
+    allLen <- matrix( NA, nrow = nbIter, ncol = length( ids ) )
 
     t0 <- Sys.time()
     for( iter in 1:nbIter ) {
@@ -221,16 +221,16 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
             newData.list[[ id ]] <- newData.list[[ id ]][ order( newData.list[[id]][,"time"] ),]
             newSwitch <- switch
             newSwitch[[ id ]] <- upState$newSwitch
-            allLen[iter] <- upState$len
-
-            # flatten data
-            newData.mat <- do.call( "rbind", newData.list )
-            newData.mat <- newData.mat[ , c( "x", "y", "time", "ID", "state" ) ]
-
-            # update Hmat (rows of 0s for transitions)
-            newHmatAll <- matrix( 0, nrow( newData.mat ), 4 )
-            newHmatAll[ which( !is.na( newData.mat[ , "x" ] ) ), ] <- Hmat
+            allLen[iter, which(ids == id) ] <- upState$len
           }
+
+          # flatten data
+          newData.mat <- do.call( "rbind", newData.list )
+          newData.mat <- newData.mat[ , c( "x", "y", "time", "ID", "state" ) ]
+
+          # update Hmat (rows of 0s for transitions)
+          newHmatAll <- matrix( 0, nrow( newData.mat ), 4 )
+          newHmatAll[ which( !is.na( newData.mat[ , "x" ] ) ), ] <- Hmat
 
           # Calculate acceptance ratio
           newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
@@ -303,7 +303,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ## Save posterior draw ##
         #########################
         allparam[iter,] <- cbind( matrix( param, ncol = 3 * nbStates ), matrix( mu, ncol =  2 * nbStates ) )
-        allrates[ iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
+        allrates[ iter , , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         if( iter %% thinStates == 0 ){
           allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
         }
@@ -311,11 +311,6 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     cat( "\n" )
     cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
     cat( "\n" )
-    if( adapt ) {
-      cat( 'S:\n')
-      print( round( S, 4 ) )
-      cat( '\n' )
-    }
 
     return( list( allparam = allparam,
                   allrates = allrates,
