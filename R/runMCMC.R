@@ -199,6 +199,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     accSwitch <- rep( 0, nbIter )
     allLen <- matrix( NA, nrow = nbIter, ncol = length( ids ) )
     allnLLk <- rep( NA, nbIter )
+    timing <- matrix( NA, nrow = nbIter / thinStates, ncol = 2 )
 
     t0 <- Sys.time()
     for( iter in 1:nbIter ) {
@@ -307,6 +308,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         allrates[iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         if( iter %% thinStates == 0 ){
           allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
+          timing[iter / thinStates,] <- c( iter, Sys.time() )
         }
         allnLLk[iter] <- oldllk
     }
