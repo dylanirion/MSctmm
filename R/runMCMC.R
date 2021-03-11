@@ -316,9 +316,13 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
     cat( "\n" )
 
-    return( list( allparam = allparam,
+    return( list( inits = inits,
+                  priors = priors,
+                  allparam = allparam,
                   allrates = allrates,
                   allstates = allstates,
                   accSwitch = accSwitch,
-                  allLen = allLen ) )
+                  allLen = allLen,
+                  allnLLk = allnLLk,
+                  timing = timing ) )
 }
