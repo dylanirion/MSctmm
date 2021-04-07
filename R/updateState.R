@@ -50,19 +50,22 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
     # update state sequence
     newSwitch <- rbind(switch[switch[,"time"]<Tbeg,],
                        path,
-                       switch[switch[,"time"]>Tend,])
+                       switch[switch[,"time"]>Tend,],
+                       deparse.level = 0)
 
     # remove switches into same state
-    fakeSwitch <- which(newSwitch[-1,"state"]==newSwitch[-nrow(newSwitch),"state"]) + 1
+    fakeSwitch <- which( newSwitch[-1,"state"] == newSwitch[-nrow(newSwitch),"state"] ) + 1
     if(length(fakeSwitch)>0)
         newSwitch <- newSwitch[-fakeSwitch,]
     if(nrow(newSwitch)) {
-        newData <- rbind( obs, cbind( NA, NA, newSwitch[,"time"], rep(obs[1,"ID"],nrow(newSwitch)), newSwitch[,"state"] ) )
+        newData <- rbind( obs,
+                          cbind( "x" = NA, "y" = NA, "time" = newSwitch[,"time"], "ID" = rep( obs[1,"ID"], nrow(newSwitch) ), "state" =  newSwitch[,"state"] ),
+                          deparse.level = 0)
     } else {
         newData <- obs
     }
 
-    newData <- newData[order(newData[,"time"]),c("x","y","time","ID","state")]
+    newData <- newData[order(newData[,"time"]), c("x", "y", "time", "ID", "state")]
 
     # update state sequence for new switches
     ind <- which(newData[,"time"]>Tbeg & newData[,"time"]<Tend)
@@ -73,7 +76,7 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
     }
 
     #knownStates override
-    newData[which( !is.na( newData[,"x"] ) ),][which( !is.na( knownStates ) ), "state"] <- knownStates[which( !is.na( knownStates ) )]
+    #newData[which( !is.na( newData[,"x"] ) ),][which( !is.na( knownStates ) ), "state"] <- knownStates[which( !is.na( knownStates ) )]
 
-    return(list(newSwitch=newSwitch, newData=newData, len=len))
+    return( list( newSwitch = newSwitch, newData = newData, len = len ) )
 }
