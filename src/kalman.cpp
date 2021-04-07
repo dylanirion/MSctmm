@@ -46,14 +46,14 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   int nbState = param.size() / 3;
 
   // unpack data
-  mat X = data.cols( 0, 1 );  // x, y
-  vec time = data.col( 2 );   // time
-  vec ID = data.col( 3 );     // ID
-  vec S = data.col( 4 );      // state
-  // time intervals
-  vec dt( nbData, fill::ones );
+  mat X = data.cols( 0, 1 );    // x, y
+  vec time = data.col( 2 );     // time
+  vec ID = data.col( 3 );       // ID
+  vec S = data.col( 4 );        // state
+  vec dt( nbData, fill::ones ); // time intervals
   dt(0) = datum::inf;
   dt.subvec( 1, nbData - 1 ) = diff( time );
+
   mat aest( 4, 3, fill::zeros );  // state estimate
   //  x    mu_x    0
   //  vx   mu_vx   0
@@ -66,7 +66,7 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   vec tau_vel = param.subvec( nbState, 2 * nbState - 1 );
   vec sigma = param.subvec( 2 * nbState, 3 * nbState - 1 );
 
-  // define all empty matrices and vectors needed for the Kalman Filter and elsewhere
+  // define all empty matrices and vectors needed for the Kalman Filter and likelihood calculation
   mat Z { { 1, 0 ,0 ,0 }, { 0, 0, 1, 0 } }; // observation model which maps the true state space into the observed space ( P, Hk )
   mat I( 4, 4, fill::eye );   // identity matrix
   mat H( 2, 2, fill::zeros ); // the covariance of the observation noise ( error, Rk )
@@ -79,12 +79,13 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   cube zRes( 2, 1, nbData, fill::zeros ); // final measurement residual
   cube ziF( 2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
   cube mu( 2, 1, nbData, fill::zeros);
-  mat iou( 1, 2, fill::zeros );  //matrix to track first and last index of each IOU bout
-  bool iou_open = false;
-  bool iou_first = true;
   colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
   colvec out( 2 * nbState + 1 );
   out.fill( NA_REAL );
+
+  // vector to keep track of the indices for first positions that are IOU, and size
+  uvec iou(nbData);
+  int k = 0;
 
   double logDet;
   double llk;
@@ -92,63 +93,23 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   // Kalman filter iterations
   for( int i = 0; i < nbData; i++ ) {
 
+    // if first location or new individual
     if( i == 0 || ID( i ) != ID( i - 1 ) ) {
+      // if starting in IOU, keep track of index
+      if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
+        iou(k) = i;
+        k++;
+      }
+      // reset dt to inf (when new individual)
       dt(i) = datum::inf;
-      // If first location of track, initialise state mean
+
+      // initialise state mean
       aest = zeros( 4, 3 );
       // and initial state covariance matrix
       Pest = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
     }
 
-    // if current state is IOU
-    if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
-      // and first position or first position of new bout or individual
-      if( i == 0 || S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) ) {
-        //reduce N by 1
-        N = N - 1;
-        //check if we need to close a bout
-        if( iou_open ) {
-          // track end index
-          iou( iou.n_rows - 1, 1 ) = i - 1;
-          iou_open = false;
-        }
-        if(!iou_first) {
-          // increase size
-          iou.resize( iou.n_rows + 1, 2 );
-        }
-        // if it's an augmented position ( i.e. NA ), use the next index as start
-        if( R_IsNA( X( i, 0 ) ) ) {
-          iou( iou.n_rows - 1, 0 ) = i + 1;
-          iou_first = false;
-          iou_open = true;
-        } else {
-          // track start index
-          iou( iou.n_rows - 1, 0 ) = i;
-          // track iou_open
-          iou_first = false;
-          iou_open = true;
-        }
-      // or last iteration, track end index
-      } else if( i == nbData - 1 ) {
-        iou( iou.n_rows - 1, 1 ) = i - 1;
-        iou_open = false;
-      }
-    // else if not IOU
-    } else if( !std::isinf( tau_pos( S(i) - 1 ) ) && i > 0 ) {
-      // but the state switched or the individual changed
-      if( S(i) != S( i - 1 ) || ID( i ) != ID( i - 1 ) )  {
-        //close the last bout index
-        iou( iou.n_rows - 1, 1 ) = i - 1;
-        iou_open = false;
-      }
-    }
-
-    if( i < nbData - 1 ) {
-      T = makeT( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), dt( i + 1 ) );
-      Q = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma( S( i + 1 ) - 1 ), dt( i + 1 ) );
-    }
-
-    // if missing observation, we can skip this and just update/forecast
+    // update our estimate ( if, missing obs skip to prediction )
     if( !R_IsNA( X( i, 0 ) ) ) {
       H( 0, 0 ) = Hmat( i, 0 );
       H( 1, 1 ) = Hmat( i, 1 );
@@ -176,9 +137,9 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
       mat Zt = Z.t();
       K(idx) = Zt(idx);
 
-      // concurrent state estimate (zCon, aest)
+      // update concurrent state estimate (zCon, aest)
       aest = aest + ( K * u.slice(i) );
-      // concurrent covariance estimate (sCon, Pest)
+      // update concurrent covariance estimate (sCon, Pest)
       mat J = I - ( K * Z );
       mat JPest = J * Pest;
       JPest = JPest.replace( datum::nan, 0 );
@@ -187,49 +148,68 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
       Pest = JPest * J.t() + KHKt;
     }
 
-    //update state estimate (zFor, aest)
-    aest = T * aest;
 
-    //update covariance estimate (sFor, Pest)
-    mat tcon = Pest;
-    bool any = tcon.has_inf();
-    if( any ) {
-      tcon = tcon.replace( datum::inf, 0 );
-    }
+    // proceed with forecast
+    if( i < nbData - 1 && ID( i ) == ID( i + 1 ) ) {
+      T = makeT( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), dt( i + 1 ) );
+      Q = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma( S( i + 1 ) - 1 ), dt( i + 1 ) );
 
-    Pest = T * tcon * T.t() + Q;
+      //predict state estimate (zFor, aest)
+      aest = T * aest;
 
-    if( any ) {
-      vec Pdiag = Pest.diag();
-      bool anyP = Pdiag.has_inf();
-      uvec idx;
-      if( anyP ) {
-        for( int j = 0; j < Pdiag.size(); j++ ){
-          if( std::isinf( Pdiag(j) ) ){
-            int sz = idx.size();
-            idx.resize( sz + 1 );
-            idx(sz) = j;
+      //predict covariance estimate (sFor, Pest)
+      mat tcon = Pest;
+      bool any = tcon.has_inf();
+      if( any ) {
+        tcon = tcon.replace( datum::inf, 0 );
+      }
+
+      Pest = T * tcon * T.t() + Q;
+
+      if( any ) {
+        vec Pdiag = Pest.diag();
+        bool anyP = Pdiag.has_inf();
+        uvec idx(4);
+        int l = 0;
+        if( anyP ) {
+          for( int j = 0; j < Pdiag.size(); j++ ){
+            if( std::isinf( Pdiag(j) ) ){
+              idx(l) = j;
+              l++;
+            }
           }
+          Pest.rows( idx.head(l) ).zeros();
+          Pest.cols( idx.head(l) ).zeros();
+          vec Pdiag2 = Pest.diag();
+          Pdiag2( idx.head(l) ).fill( datum::inf );
+          Pest.diag() = Pdiag2;
         }
-        Pest.rows( idx ).zeros();
-        Pest.cols( idx ).zeros();
-        vec Pdiag2 = Pest.diag();
-        Pdiag2( idx ).fill( datum::inf );
-        Pest.diag() = Pdiag2;
       }
     }
-  }
+  } // end filter iterations
+
+  // shed all missing (skipped) obs
+  uvec na_xy = find_nonfinite( X.col(0) );
+  u.shed_slices( na_xy );
+  iF.shed_slices( na_xy );
+  uiF.shed_slices( na_xy );
+  ziF.shed_slices( na_xy );
+  zRes.shed_slices( na_xy );
+  mu.shed_slices( na_xy );
+  logdetF.shed_rows( na_xy );
+  X.shed_rows( na_xy );
+  S.shed_rows( na_xy );
+  N -= na_xy.size();
 
   // calculate state based mu
   // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
   for( int i = 0; i < nbState; i++ ) {
 
-    // if IOU use first location of each IOU bout for mu
+    // if IOU state, use first location for mu
     if( std::isinf( tau_pos( i ) ) ){
-      for(int j = 0; j < iou.n_rows; j++ ){
-        uvec iou_ids = regspace<uvec>( iou(j,0), iou(j,1) );
-        mu.each_slice(iou_ids) = X.row( iou(j,0) ).t();
-      }
+      uvec iou_ids = find( S == i + 1 );
+      mu.each_slice(iou_ids) = X.row( iou_ids.min() ).t();
+
     // otherwise calculate mu from residuals
     } else {
       uvec ouf_ids = find( S == i + 1 );        // Find indices where state i occurs
@@ -243,39 +223,37 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
         //mat mu_m = inv( W.slice(0) ) * D.slice(0);
         mat mu_m = solve( W.slice(0), eye(2,2) ) * D.slice(0);
         mu.each_slice(ouf_ids) = mu_m;
+        //save mu to output
         out( i * 2 + 1 ) = mu_m(0,0);
-        out( i * 2 + 2 ) =  mu_m(1,0);
+        out( i * 2 + 2 ) = mu_m(1,0);
       } else {
         mu.each_slice(ouf_ids) = fixmu.subvec( i * 2, i * 2 + 1 );
+        //save mu to output
         out( i * 2 + 1 ) = fixmu( i * 2 );
         out( i * 2 + 2 ) = fixmu( i * 2 + 1 );
       }
-
     }
-  }
+  } // end mu
 
+  // detrend
   for( int i = 0; i < zRes.n_slices; ++i ) {
     zRes.slice(i) = u.slice(i).col(0) - u.slice(i).cols(1,2) * mu.slice(i);
     ziF.slice(i) = iF.slice(i) * zRes.slice(i);
     ziF.slice(i) = ziF.slice(i).replace( datum::nan, 0 );
+  } //end detrend
+
+  // if any tracks began in IOU, drop logdetF and reduce N
+  if( k > 0 ) {
+    logdetF.shed_rows( iou.head(k) );
+    N -= k;
   }
-  uvec na_xy = find_nonfinite( X.col(0) );
-  ziF.shed_slices( na_xy );
-  zRes.shed_slices( na_xy );
-  N -= na_xy.size();
 
   double sigmaK = as_scalar( sum( sum( ziF % zRes, 2 ) ) ) / ( 2 * N );
-
-  // if IOU, drop first logDet for each IOU bout because couldn't condition off initial state and will be Inf
-  if( tau_pos.has_inf() ) {
-    uvec drop_iou = as<uvec>( wrap( iou.col(0) ) ); // is there a better way to do this?
-    logdetF.shed_rows( drop_iou );
-  }
 
   logDet = mean( logdetF );
 
   llk = -1 * ( sigmaK - 1 ) - logDet / 2;
-  llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) / N ) );
+  llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) ) );
   llk = std::isnan(llk) ? -1 * datum::inf : llk;
 
   out(0) = llk;

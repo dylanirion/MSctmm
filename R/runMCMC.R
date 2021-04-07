@@ -152,20 +152,20 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
 
     for( id in ids ) {
       nbObs <- nrow(track[ which( track$ID == id ), ])
-      obs[[ id ]] <- matrix( c( track[ which( track$ID == id ), "x" ],
-                               track[ which( track$ID == id ), "y" ],
-                               track[ which( track$ID == id ), "time" ],
-                               as.numeric( track[ which( track$ID == id ), "ID" ] ),
-                               state0[ which( track$ID == id )  ] ),
-                            ncol = 5 )
+      obs[[ id ]] <- cbind( "x" = track[ which( track$ID == id ), "x" ],
+                            "y" = track[ which( track$ID == id ), "y" ],
+                            "time" = track[ which( track$ID == id ), "time" ],
+                            "ID" = as.numeric( track[ which( track$ID == id ), "ID" ] ),
+                            "state" = state0[ which( track$ID == id )  ] )
       known[[ id ]] <- knownStates[ which( track$ID == id )  ]
-      colnames( obs[[ id ]] ) <- c( "x", "y", "time", "ID",  "state" )
+      #colnames( obs[[ id ]] ) <- c( "x", "y", "time", "ID",  "state" )
       indSwitch <- which( obs[[ id ]][ -1, "state" ] != obs[[ id ]][ -nbObs, "state" ] ) + 1
-      switch[[ id ]] <- matrix( c( obs[[ id ]][ indSwitch, "time" ] - 0.001, rle( obs[[ id ]][ , "state" ] )$values[ -1 ] ), ncol = 2 )
-      colnames( switch[[ id ]] ) <- c( "time", "state" )
+      switch[[ id ]] <- cbind( "time" = obs[[ id ]][ indSwitch, "time" ] - 0.001,
+                               "state" = rle( obs[[ id ]][ , "state" ] )$values[ -1 ] )
+      #colnames( switch[[ id ]] ) <- c( "time", "state" )
 
       if( !all( is.na( switch[[ id ]] ) ) ) {
-        data.list[[ id ]] <- rbind( obs[[ id ]][,c( "x", "y", "time", "ID",  "state" )] ,cbind( NA, NA, switch[[ id ]][,"time"], id, switch[[ id ]][,"state"] ) )
+        data.list[[ id ]] <- rbind( obs[[ id ]][,c( "x", "y", "time", "ID",  "state" )] ,cbind( "x" = NA, "y" = NA, "time" = switch[[ id ]][,"time"], "ID" = id, "state" = switch[[ id ]][,"state"] ) )
         data.list[[ id ]] <- data.list[[ id ]][ order( data.list[[ id ]][,"time"] ),]
       } else {
         data.list[[ id ]] <- obs[[ id ]][,c( "x", "y", "time", "ID",  "state" )]
@@ -198,7 +198,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
     allLen <- matrix( NA, nrow = nbIter, ncol = length( ids ) )
-    allnLLk <- rep( NA, nbIter )
+    allLLk <- rep( NA, nbIter )
     timing <- matrix( NA, nrow = nbIter / thinStates, ncol = 2 )
 
     t0 <- Sys.time()
@@ -219,7 +219,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
             upState <- updateState( obs = obs[[ id ]], knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
                                     updateProbs = updateProbs, Q = Q[[ id ]])
             newData.list <- data.list
-            newData.list[[ id ]] <- upState$newData[,c( "x", "y", "time", "ID",  "state" )]
+            newData.list[[ id ]] <- cbind( upState$newData[,c( "x", "y", "time")], "ID" = rep(1, nrow(upState$newData)),  "state" = upState$newData[,"state"] )
             newData.list[[ id ]] <- newData.list[[ id ]][ order( newData.list[[id]][,"time"] ),]
             newSwitch <- switch
             newSwitch[[ id ]] <- upState$newSwitch
@@ -311,7 +311,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
           allstates[iter / thinStates,] <- unlist( lapply( obs, function( ob ) { ob[ , "state" ] } ) )
           timing[iter / thinStates,] <- c( iter, Sys.time() )
         }
-        allnLLk[iter] <- oldllk
+        allLLk[iter] <- oldllk
     }
     cat( "\n" )
     cat( "Elapsed: ", pretty_dt( difftime( Sys.time(), t0, units = "secs" ) ), sep = "" )
@@ -324,6 +324,6 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
                   allstates = allstates,
                   accSwitch = accSwitch,
                   allLen = allLen,
-                  allnLLk = allnLLk,
+                  allnLLk = allLLk,
                   timing = timing ) )
 }
