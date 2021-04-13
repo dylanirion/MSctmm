@@ -73,7 +73,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     #overwrite state inits with knownStates
     state0[which( !is.na( knownStates ) )] <- knownStates[which( !is.na( knownStates ) )]
 
-
+    #@TODO: STOP CHECK ALL ARGUMENTS & LENGTHS
     if( is.null( fixPar ) ) {
       fixpar <- list( tau_pos = rep( NA, nbStates ),
                       tau_vel = rep( NA, nbStates ),
@@ -81,6 +81,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     } else {
       fixpar <- fixPar
     }
+    #@TODO THIS GIVES THE SAME MESSAGE IF INITS OR FIXPAR ARE NOT THE CORRECT LENGTH
     if( length( unlist( inits[1:3] ) ) != length( unlist( fixpar ) ) )
       stop( "'fixpar' has the wrong length" )
 
@@ -215,13 +216,15 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         ## 1. Update discrete state process ##
         ######################################
         if( updateState ) {
+
+          newData.list <- data.list
+          newSwitch <- switch
+
           for( id in ids ) {
             upState <- updateState( obs = obs[[ id ]], knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim,
                                     updateProbs = updateProbs, Q = Q[[ id ]])
-            newData.list <- data.list
-            newData.list[[ id ]] <- cbind( upState$newData[,c( "x", "y", "time")], "ID" = rep(1, nrow(upState$newData)),  "state" = upState$newData[,"state"] )
+            newData.list[[ id ]] <- cbind( upState$newData[,c( "x", "y", "time")], "ID" = rep( id, nrow(upState$newData) ),  "state" = upState$newData[,"state"] )
             newData.list[[ id ]] <- newData.list[[ id ]][ order( newData.list[[id]][,"time"] ),]
-            newSwitch <- switch
             newSwitch[[ id ]] <- upState$newSwitch
             allLen[iter, which(ids == id) ] <- upState$len
           }

@@ -59,8 +59,7 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
         newSwitch <- newSwitch[-fakeSwitch,]
     if(nrow(newSwitch)) {
         newData <- rbind( obs,
-                          cbind( "x" = NA, "y" = NA, "time" = newSwitch[,"time"], "ID" = rep( obs[1,"ID"], nrow(newSwitch) ), "state" =  newSwitch[,"state"] ),
-                          deparse.level = 0)
+                          cbind( "x" = NA, "y" = NA, "time" = newSwitch[,"time"], "ID" = rep( obs[1,"ID"], nrow(newSwitch) ), "state" =  newSwitch[,"state"] ) )
     } else {
         newData <- obs
     }

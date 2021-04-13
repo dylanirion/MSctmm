@@ -196,19 +196,25 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   ziF.shed_slices( na_xy );
   zRes.shed_slices( na_xy );
   mu.shed_slices( na_xy );
-  logdetF.shed_rows( na_xy );
   X.shed_rows( na_xy );
   S.shed_rows( na_xy );
-  N -= na_xy.size();
+
+  // drop logDet for missing data and starting IOUs
+  uvec drop = join_cols( na_xy, iou.head(k) );
+  logdetF.shed_rows( drop );
+  N -= drop.size();
 
   // calculate state based mu
   // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
   for( int i = 0; i < nbState; i++ ) {
 
     // if IOU state, use first location for mu
+    // @todo: do I need to do this per individual?
     if( std::isinf( tau_pos( i ) ) ){
       uvec iou_ids = find( S == i + 1 );
-      mu.each_slice(iou_ids) = X.row( iou_ids.min() ).t();
+      if( iou_ids.size() >= 1 ) {
+        mu.each_slice(iou_ids) = X.row( iou_ids.min() ).t();
+      }
 
     // otherwise calculate mu from residuals
     } else {
@@ -241,12 +247,6 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
     ziF.slice(i) = iF.slice(i) * zRes.slice(i);
     ziF.slice(i) = ziF.slice(i).replace( datum::nan, 0 );
   } //end detrend
-
-  // if any tracks began in IOU, drop logdetF and reduce N
-  if( k > 0 ) {
-    logdetF.shed_rows( iou.head(k) );
-    N -= k;
-  }
 
   double sigmaK = as_scalar( sum( sum( ziF % zRes, 2 ) ) ) / ( 2 * N );
 
