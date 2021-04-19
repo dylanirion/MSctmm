@@ -44,6 +44,7 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   int nbData = data.n_rows;
   int N = nbData;
   int nbState = param.size() / 3;
+  int nbID = 0;
 
   // unpack data
   mat X = data.cols( 0, 1 );    // x, y
@@ -95,6 +96,7 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
 
     // if first location or new individual
     if( i == 0 || ID( i ) != ID( i - 1 ) ) {
+      nbID++;
       // if starting in IOU, keep track of index
       if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
         iou(k) = i;
@@ -209,31 +211,36 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   for( int i = 0; i < nbState; i++ ) {
 
     // if IOU state, use first location for mu
-    // @todo: do I need to do this per individual?
+    // @todo: do I need to do this per 'bout'
     if( std::isinf( tau_pos( i ) ) ){
-      uvec iou_ids = find( S == i + 1 );
-      if( iou_ids.size() >= 1 ) {
-        mu.each_slice(iou_ids) = X.row( iou_ids.min() ).t();
+      for( int j = 0; j < nbID; j++ ) {
+        uvec iou_idx = find( S == i + 1 );
+        uvec ind_idx = find( ID == j + 1 );
+        uvec idx = intersect( iou_idx, ind_idx );
+        if( idx.size() >= 1 ) {
+          mu.each_slice(idx) = X.row( idx.min() ).t();
+        }
       }
+
 
     // otherwise calculate mu from residuals
     } else {
-      uvec ouf_ids = find( S == i + 1 );        // Find indices where state i occurs
+      uvec ouf_idx = find( S == i + 1 );        // Find indices where state i occurs
       if( R_IsNA( fixmu( i * 2 ) ) && R_IsNA( fixmu( i * 2 + 1 ) ) ) {
-        cube uiF_ouf = uiF.slices(ouf_ids);
-        cube u_ouf = u.slices(ouf_ids);
+        cube uiF_ouf = uiF.slices(ouf_idx);
+        cube u_ouf = u.slices(ouf_idx);
         cube D( 2, 1, 1 );
         D.tube(0,0) = sum( uiF_ouf.tube(0,0) % u_ouf.tube(0,0), 2 );
         D.tube(1,0) = sum( uiF_ouf.tube(1,1) % u_ouf.tube(1,0), 2 );
         cube W = sum( uiF_ouf % u_ouf.tube(0,1,1,2), 2 );
         //mat mu_m = inv( W.slice(0) ) * D.slice(0);
         mat mu_m = solve( W.slice(0), eye(2,2) ) * D.slice(0);
-        mu.each_slice(ouf_ids) = mu_m;
+        mu.each_slice(ouf_idx) = mu_m;
         //save mu to output
         out( i * 2 + 1 ) = mu_m(0,0);
         out( i * 2 + 2 ) = mu_m(1,0);
       } else {
-        mu.each_slice(ouf_ids) = fixmu.subvec( i * 2, i * 2 + 1 );
+        mu.each_slice(ouf_idx) = fixmu.subvec( i * 2, i * 2 + 1 );
         //save mu to output
         out( i * 2 + 1 ) = fixmu( i * 2 );
         out( i * 2 + 2 ) = fixmu( i * 2 + 1 );
