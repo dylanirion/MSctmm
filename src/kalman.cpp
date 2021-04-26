@@ -39,7 +39,7 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
+List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
 
   int nbData = data.n_rows;
   int N = nbData;
@@ -81,8 +81,8 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   cube ziF( 2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
   cube mu( 2, 1, nbData, fill::zeros);
   colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
-  colvec out( 2 * nbState + 1 );
-  out.fill( NA_REAL );
+  mat mu_out( nbState, 2 );
+  mu_out.fill( NA_REAL );
 
   // vector to keep track of the indices for first positions that are IOU, and size
   uvec iou(nbData);
@@ -237,13 +237,13 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
         mat mu_m = solve( W.slice(0), eye(2,2) ) * D.slice(0);
         mu.each_slice(ouf_idx) = mu_m;
         //save mu to output
-        out( i * 2 + 1 ) = mu_m(0,0);
-        out( i * 2 + 2 ) = mu_m(1,0);
+        mu_out( i, 0 ) = mu_m(0,0);
+        mu_out( i, 1 ) = mu_m(1,0);
       } else {
         mu.each_slice(ouf_idx) = fixmu.subvec( i * 2, i * 2 + 1 );
         //save mu to output
-        out( i * 2 + 1 ) = fixmu( i * 2 );
-        out( i * 2 + 2 ) = fixmu( i * 2 + 1 );
+        mu_out( i, 0 ) = fixmu( i * 2 );
+        mu_out( i, 1 ) = fixmu( i * 2 + 1 );
       }
     }
   } // end mu
@@ -263,10 +263,8 @@ NumericVector kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, ar
   llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) ) );
   llk = std::isnan(llk) ? -1 * datum::inf : llk;
 
-  out(0) = llk;
-  NumericVector output = as<NumericVector>( wrap( out ) );
-  output.attr("dim") = R_NilValue;
-
-  return output;
-
+  return List::create(
+    Rcpp::Named("llk") = llk,
+    Rcpp::Named("mu") = mu_out
+  );
 }

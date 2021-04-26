@@ -181,7 +181,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
     HmatAll[ which( !is.na( data.mat[ , "x" ] ) ), ] <- Hmat
 
     # initial likelihood
-    oldllk <- kalman_rcpp( data = data.mat, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )[1]
+    oldllk <- kalman_rcpp( data = data.mat, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )$llk
 
     # initial log-prior
     oldlogprior <- sum( dnorm( log( param[ is.na( unlist( fixpar ) ) ] ), priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
@@ -238,7 +238,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
           newHmatAll[ which( !is.na( newData.mat[ , "x" ] ) ), ] <- Hmat
 
           # Calculate acceptance ratio
-          newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )[1]
+          newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )$llk
           logHR <- newllk - oldllk
 
           if( log( runif(1) ) < logHR ) {
@@ -275,8 +275,8 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
         data.mat <- do.call( "rbind", data.list )
         data.mat <- data.mat[ , c( "x", "y", "time", "ID", "state" ) ]
         kalman <- kalman_rcpp( data = data.mat, param = thetasprime, fixmu = unlist( fixmu ), Hmat = HmatAll )
-        newllk <- kalman[1]
-        mu <- kalman[-1]
+        newllk <- kalman$llk
+        mu <- as.vector( t( kalman$mu ) )
         logHR <- newllk + newlogprior - oldllk - oldlogprior
 
         if( log( runif( 1 ) ) < logHR ) {
