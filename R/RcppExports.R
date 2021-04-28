@@ -43,7 +43,7 @@ kalman_rcpp <- function(data, param, fixmu, Hmat) {
 #' This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
 #' and MScrawl (Michelot and Blackwell, 2019).
 #'
-#' @name kalman_rcpp
+#' @name smooth_rcpp
 #' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
 #' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
 #' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
@@ -51,7 +51,7 @@ kalman_rcpp <- function(data, param, fixmu, Hmat) {
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
 #'
-#' @return Log-likelihood
+#' @return a named List containing the predicted locations and velocities, and variance of these estimates.
 #'
 #' @references
 #' Calabrese, J.M., Fleming, C.H. and Gurarie, E. (2016).
