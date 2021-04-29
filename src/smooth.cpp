@@ -68,8 +68,8 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   mat Z { { 1, 0 ,0 ,0 }, { 0, 0, 1, 0 } }; // observation model which maps the true state space into the observed space ( P, Hk )
   mat I( 4, 4, fill::eye );   // identity matrix
   mat H( 2, 2, fill::zeros ); // the covariance of the observation noise ( error, Rk )
-  cube T( 4, 4, nbData );              // state transition model which is applied to the previous state xk−1 ( Green, Fk )
-  cube Q( 4, 4, nbData );              // covariance of the process noise ( Sigma, Q )
+  cube T( 4, 4, nbData, fill::zeros );              // state transition model which is applied to the previous state xk−1 ( Green, Fk )
+  cube Q( 4, 4, nbData, fill::zeros );              // covariance of the process noise ( Sigma, Q )
   mat K( 4, 2, fill::zeros ); // Kalman Gain ( Gain, Kk )
   mat u( nbData, 2, fill::zeros );      // measurement residual ( zRes, yk )
   cube iF( 2, 2, nbData, fill::zeros ); // inverse of residual covariance, residual "precision" ( isRes )
@@ -167,7 +167,7 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
           }
           Pfor.slice(i + 1).rows( idx.head(l) ).zeros();
           Pfor.slice(i + 1).cols( idx.head(l) ).zeros();
-          vec Pdiag2 = Pest.slice(i).diag();
+          vec Pdiag2 = Pfor.slice(i + 1).diag();
           Pdiag2( idx.head(l) ).fill( datum::inf );
           Pfor.slice(i + 1).diag() = Pdiag2;
         }
@@ -186,7 +186,7 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   //backward smoother
   for ( int j = aest.n_rows - 2; j >= 0; j-- ) {
     if( ID( j ) == ID( j + 1 ) ) {
-      mat TL = Pest.slice(j) * T.slice(j + 1).t();
+      mat TL = Pest.slice(j) * T.slice(j).t();
       TL = TL.replace( datum::inf, 0 );
       mat INV = solve( Pfor.slice( j + 1 ), eye( 4, 4) );
       TL = TL * INV;
@@ -202,10 +202,10 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       }
 
       L.slice(j) = TL;
-      mat J = I - ( L.slice(j) * T.slice(j + 1) );
+      mat J = I - ( L.slice(j) * T.slice(j) );
       mat JPest = J * Pest.slice(j);
       JPest = JPest.replace( datum::nan, 0 );
-      Pest.slice(j) = JPest * J.t() + ( L.slice(j) * ( Pest.slice(j + 1) + Q.slice(j + 1) ) * L.slice(j).t() );
+      Pest.slice(j) = JPest * J.t() + ( L.slice(j) * ( Pest.slice(j + 1) + Q.slice(j) ) * L.slice(j).t() );
       aest.row(j) = aest.row(j) + ( L.slice(j) * ( aest.row(j + 1) - afor.row(j + 1) ).t() ).t();
     } else {
       Pest.slice(j) = Pest.slice(j);
