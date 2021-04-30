@@ -326,6 +326,7 @@ runMCMC <- function( track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits
                   allrates = allrates,
                   allstates = allstates,
                   accSwitch = accSwitch,
+                  accParam = accParam,
                   allLen = allLen,
                   allnLLk = allLLk,
                   timing = timing ) )
