@@ -38,6 +38,23 @@ kalman_rcpp <- function(data, param, fixmu, Hmat) {
     .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, fixmu, Hmat)
 }
 
+#' Simulate a sample path from an endpoint conditioned CTMC by modified
+#' rejection sampling.
+#'
+#' @param a,b States at the interval endpoints, provided as integers
+#'    corresponding to rows of the CTMC rate matrix.
+#' @param t0,t1 times of the interval endpoints
+#' @param Q CTMC rate matrix
+#'
+#' @return matrix whose first column is the sequence of transition times
+#' bookended by interval endpoints, and whose second column is the sequence of
+#' states
+#'
+#' Modified from sample_math_mr in ECctmc (Fintzi, 2018)
+sample_path_mr2 <- function(a, b, t0, t1, k, nbStates) {
+    .Call('_MSctmm_sample_path_mr2', PACKAGE = 'MSctmm', a, b, t0, t1, k, nbStates)
+}
+
 #' Kalman filter and smoother
 #'
 #' This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
@@ -121,3 +138,7 @@ makeSigma <- function(tau_pos, tau_vel, sigma, dt) {
     .Call('_MSctmm_makeSigma', PACKAGE = 'MSctmm', tau_pos, tau_vel, sigma, dt)
 }
 
+# Register entry points for exported C++ functions
+methods::setLoadAction(function(ns) {
+    .Call('_MSctmm_RcppExport_registerCCallable', PACKAGE = 'MSctmm')
+})

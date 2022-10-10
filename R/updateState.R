@@ -8,7 +8,7 @@
 #' (each an integer, corresponding to a number of observations)
 #' @param updateProbs Vector of probabilities of picking each number from
 #' updateLim[1] to updateLim[2], for the length of the update interval
-#' @param Q Square matrix of transition rates
+#' @param kappa Upper bounds of transition rate
 #'
 #' @return List of two elements:
 #' \item{newSwitch}{Updated matrix of transitions}
@@ -24,7 +24,7 @@
 #'
 #' @importFrom ECctmc sample_path
 #' @export
-updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q)
+updateState <- function(obs, nbStates, knownStates, switch, updateLim, updateProbs=NULL, Q = NULL, kappa = NULL)
 {
     nbObs <- nrow(obs)
 
@@ -43,8 +43,13 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
     Tend <- obs[end,"time"]
 
     # sample state sequence conditional on start and end state
-    path <- sample_path(a=obs[begin,"state"], b=obs[end,"state"],
-                        t0=Tbeg, t1=Tend, Q=Q)
+    if(!is.null(Q)) {
+      path <- sample_path(a=obs[begin,"state"], b=obs[end,"state"],
+                               t0=Tbeg, t1=Tend, Q=Q)
+    } else if(!is.null(kappa)) {
+      path <- sample_path_mr2(a=obs[begin,"state"], b=obs[end,"state"],
+                               t0=Tbeg, t1=Tend, k=kappa, nbStates=nbStates)
+    }
     path <- path[-c(1,nrow(path)),] # remove 1st and last rows (observations)
 
     # update state sequence
@@ -60,6 +65,7 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
     if(nrow(newSwitch)) {
         newData <- rbind( obs,
                           cbind( "x" = NA, "y" = NA, "time" = newSwitch[,"time"], "ID" = rep( obs[1,"ID"], nrow(newSwitch) ), "state" =  newSwitch[,"state"] ) )
+        rownames(newData) <- NULL
     } else {
         newData <- obs
     }
@@ -75,7 +81,7 @@ updateState <- function(obs, knownStates, switch, updateLim, updateProbs=NULL, Q
     }
 
     #knownStates override
-    #newData[which( !is.na( newData[,"x"] ) ),][which( !is.na( knownStates ) ), "state"] <- knownStates[which( !is.na( knownStates ) )]
+    newData[which( !is.na( newData[,"x"] ) ),][which( !is.na( knownStates ) ), "state"] <- knownStates[which( !is.na( knownStates ) )]
 
     return( list( newSwitch = newSwitch, newData = newData, len = len ) )
 }

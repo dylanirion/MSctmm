@@ -1,9 +1,10 @@
 #define ARMA_DONT_PRINT_ERRORS
 #include <RcppArmadillo.h>
+#include "mat.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using namespace arma;
-#include "mat.hpp"
+
 
 //' Kalman filter
 //'
