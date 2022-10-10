@@ -121,7 +121,7 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     } else {
       updateLim <- lapply( unique(track$ID), function(id) {
         lim <- ceiling( props$updateLim * nrow(track[ which( track$ID == id ), ]) )
-        if (lim[1] < 3) { lim + 2 } else { lim }
+        if (lim[1] < 3) { lim = lim + 2 }
         if (lim[1] == lim[2]) lim[2] = lim[2] + 1
         lim
         } )
