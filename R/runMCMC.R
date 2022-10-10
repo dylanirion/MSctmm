@@ -122,6 +122,8 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
       updateLim <- lapply( unique(track$ID), function(id) {
         lim <- ceiling( props$updateLim * nrow(track[ which( track$ID == id ), ]) )
         if (lim[1] < 3) { lim + 2 } else { lim }
+        if (lim[1] == lim[2]) lim[2] = lim[2] + 1
+        lim
         } )
     }
     if ( !is.null(props$updateProbs) & "list" %in% class(props$updateProbs) & length(props$updateProbs) == length( unique(track$ID) ) ) {
