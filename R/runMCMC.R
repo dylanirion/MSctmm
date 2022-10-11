@@ -116,13 +116,15 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     if ( "list" %in% class(props$updateLim) & length(props$updateLim) == length( unique(track$ID) ) ) {
       updateLim <- lapply( 1:length( unique(track$ID ) ), function(i) {
         lim <- ceiling( props$updateLim[[i]] * nrow(track[ which( track$ID == unique(track$ID)[i] ), ]) )
-        if (lim[1] < 3) { lim + 2 } else { lim }
+        if (lim[1] < 3) { lim = lim + 3 }
+        if (lim[1] == lim[2]) lim[2] = lim[2] + 1
+        lim
         } )
     } else {
       updateLim <- lapply( unique(track$ID), function(id) {
         lim <- ceiling( props$updateLim * nrow(track[ which( track$ID == id ), ]) )
-        if (lim[1] < 3) { lim = lim + 2 }
-        if (lim[1] == lim[2]) lim[2] = lim[2] + 3
+        if (lim[1] < 3) { lim = lim + 3 }
+        if (lim[1] == lim[2]) lim[2] = lim[2] + 1
         lim
         } )
     }

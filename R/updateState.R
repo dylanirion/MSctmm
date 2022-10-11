@@ -42,6 +42,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, updatePro
     Tbeg <- obs[begin,"time"]
     Tend <- obs[end,"time"]
 
+
     # sample state sequence conditional on start and end state
     if(!is.null(Q)) {
       path <- sample_path(a=obs[begin,"state"], b=obs[end,"state"],
