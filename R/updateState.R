@@ -24,7 +24,7 @@
 #'
 #' @importFrom ECctmc sample_path
 #' @export
-updateState <- function(obs, nbStates, knownStates, switch, updateLim, updateProbs=NULL, Q = NULL, kappa = NULL)
+updateState <- function(obs, nbStates, knownStates, switch, updateLim, updateProbs=NULL, Q = NULL, kappa = NULL, model = NULL)
 {
     nbObs <- nrow(obs)
 
@@ -48,7 +48,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, updatePro
                                t0=Tbeg, t1=Tend, Q=Q)
     } else if(!is.null(kappa)) {
       path <- sample_path_mr2(a=obs[begin,"state"], b=obs[end,"state"],
-                               t0=Tbeg, t1=Tend, k=kappa, nbStates=nbStates)
+                               t0=Tbeg, t1=Tend, k=kappa, nbStates=nbStates, model = model)
     }
     path <- path[-c(1,nrow(path)),] # remove 1st and last rows (observations)
 

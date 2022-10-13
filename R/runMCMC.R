@@ -56,7 +56,7 @@
 #' @useDynLib MSctmm
 runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits, priors,
                     knownStates, props, tunes, Hmat,
-                    updateState = TRUE, adapt = FALSE)
+                    updateState = TRUE, adapt = FALSE, model = NULL)
 {
 
     ######################
@@ -256,7 +256,7 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
 
           for (id in ids) {
             upState <- updateState( obs = obs[[ id ]], nbStates = nbStates, knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim[[id]],
-                                    updateProbs = updateProbs[[id]], Q = Q[[ id ]], kappa = kappa)
+                                    updateProbs = updateProbs[[id]], Q = Q[[ id ]], kappa = kappa, model = model)
             newData.list[[ id ]] <- upState$newData
             newSwitch[[ id ]] <- upState$newSwitch
             allLen[iter, which(ids == id) ] <- upState$len
