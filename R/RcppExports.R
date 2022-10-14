@@ -51,8 +51,8 @@ kalman_rcpp <- function(data, param, fixmu, Hmat) {
 #' states
 #'
 #' Modified from sample_math_mr in ECctmc (Fintzi, 2018)
-sample_path_mr2 <- function(a, b, t0, t1, k, nbStates) {
-    .Call('_MSctmm_sample_path_mr2', PACKAGE = 'MSctmm', a, b, t0, t1, k, nbStates)
+sample_path_mr2 <- function(a, b, t0, t1, k, nbStates, model) {
+    .Call('_MSctmm_sample_path_mr2', PACKAGE = 'MSctmm', a, b, t0, t1, k, nbStates, model)
 }
 
 #' Kalman filter and smoother

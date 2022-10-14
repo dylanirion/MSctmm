@@ -56,7 +56,7 @@
 #' @useDynLib MSctmm
 runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits, priors,
                     knownStates, props, tunes, Hmat,
-                    updateState = TRUE, adapt = FALSE, model = NULL)
+                    updateState = TRUE, adapt = FALSE, model = NA)
 {
 
     ######################
