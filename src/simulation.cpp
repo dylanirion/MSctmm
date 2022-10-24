@@ -20,7 +20,7 @@ using namespace Rcpp;
 //'
 //' Modified from sample_math_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double k, const int nbStates, String model) {
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double k, const int nbStates, arma::vec alpha, arma::vec t_alpha, String model) {
 
   // initialize vector of states
   Rcpp::IntegerVector states = Rcpp::seq_len(nbStates);
@@ -48,10 +48,10 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     // set the current time and state
     Rcpp::NumericVector cur_time(1, t0);
     Rcpp::IntegerVector cur_state(1, a);
-    double cur_rate = -getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
+    double cur_rate = -getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
 
     // get the state transition probabilities
-    Rcpp::NumericVector state_probs = pmax(getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
+    Rcpp::NumericVector state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
 
     // If the beginning and end states don't match, sample first transition
     if(a != b) {
@@ -64,8 +64,8 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
 
       // update the rate of transition out of the new state
       // and update the state transition probabilities
-      cur_rate  = -getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
-      state_probs = pmax(getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
+      cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
+      state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
 
       // Insert the next state and transition time into the
       // appropriate vectors
@@ -121,8 +121,8 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
 
         // update the rate of transition out of the new state
         // and update the state transition probabilities
-        cur_rate  = -getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
-        state_probs = pmax(getQ(nbStates, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
+        cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, cur_state[0] - 1);
+        state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], lng, lat, model)(cur_state[0] - 1, _ ), 0);
         // update the state and time vectors
         time_vec.push_back(cur_time[0]);
         state_vec.push_back(cur_state[0]);

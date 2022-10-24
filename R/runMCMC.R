@@ -103,8 +103,8 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     priorShape <- priors$shape
     priorRate <- priors$rate
     priorCon <- priors$con
-    if (is.null(priorMean) | is.null(priorSD) | is.null(priorShape) |
-       is.null(priorRate) | is.null(priorCon)) {
+    if (is.null(priorMean) | is.null(priorSD) | (((is.null(priorShape) |
+       is.null(priorRate) | is.null(priorCon))) & !is.null(inits$Q))) {
         stop("'priors' should have components mean, sd, shape, rate, and con")
     }
 
@@ -172,13 +172,17 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     } else { # if no rate matrix provided, rate params must be
       Q <- NULL
       kappa <- inits$kappa
+      rate_S <- props$rate_S
+      rate_priorMean <- priors$rate_mean
+      rate_priorSD <- priors$rate_sd
+      rateparam <- c( inits$alpha, inits$t_alpha )
 
     }
 
     names(updateLim) <- ids
     names(updateProbs) <- ids
 
-    if (is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(Q) | is.null(state0) )
+    if (is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(state0) )
       stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
 
     for (id in ids) {
@@ -214,7 +218,13 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     oldllk <- kalman_rcpp( data = data.mat, param = param, fixmu = unlist( fixmu ), Hmat = HmatAll )$llk
 
     # initial log-prior
+    # should this just be one log prior?
     oldlogprior <- sum( dnorm( log( param[ is.na( unlist( fixpar ) ) ] ), priorMean[ is.na( unlist( fixpar ) ) ], priorSD[ is.na( unlist( fixpar ) ) ], log = TRUE ) )
+    if (!is.na(model)) {
+      rate_oldlogprior <- sum( msm::dtnorm( log(rateparam[1:(length(rateparam)/2)]), rate_priorMean, rate_priorSD, upper = log(kappa), log = TRUE ), dunif(((length(rateparam)/2) + 1):length(rateparam), 0, 366) )
+      rate_thetas <- log(rateparam)
+      rate_thetasprime <- rateparam
+    }
 
     ###############################
     ## Loop over MCMC iterations ##
@@ -228,7 +238,8 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     if (!is.null(Q)) {
       allrates <- array( NA, dim = c( nbIter, nbStates * ( nbStates - 1 ), length( ids ) ) )
     } else {
-      # allrateparam
+      accRateParam <- rep( 0, nbIter )
+      allrateparam <- matrix(NA, nrow = nbIter, ncol = length(rateparam))
     }
     allstates <- matrix( NA, nrow = nbIter / thinStates, ncol = nrow( track ) ) # uses a lot of memory!
     accSwitch <- rep( 0, nbIter )
@@ -255,8 +266,13 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
           newSwitch <- switch
 
           for (id in ids) {
-            upState <- updateState( obs = obs[[ id ]], nbStates = nbStates, knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim[[id]],
-                                    updateProbs = updateProbs[[id]], Q = Q[[ id ]], kappa = kappa, model = model)
+            if (is.na(model)) {
+              upState <- updateState( obs = obs[[ id ]], nbStates = nbStates, knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim[[id]],
+                                      updateProbs = updateProbs[[id]], Q = Q[[ id ]], kappa = kappa, model = model)
+            } else {
+              upState <- updateState( obs = obs[[ id ]], nbStates = nbStates, knownStates = known[[ id ]], switch = switch[[ id ]], updateLim = updateLim[[id]],
+                                      updateProbs = updateProbs[[id]], Q = NULL, rateparam = rate_thetasprime, kappa = kappa, model = model)
+            }
             newData.list[[ id ]] <- upState$newData
             newSwitch[[ id ]] <- upState$newSwitch
             allLen[iter, which(ids == id) ] <- upState$len
@@ -271,16 +287,32 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
 
           # Calculate acceptance ratio
           newllk <- kalman_rcpp( data = newData.mat, param = param, fixmu = unlist( fixmu ), Hmat = newHmatAll )$llk
-          logHR <- newllk - oldllk
+          if (is.na(model)) {
+            logHR <- newllk - oldllk
+          } else {
+            #TODO truncate at kappa for alpha
+            rate_newlogprior <- sum( msm::dtnorm( rate_thetas[1:(length(rate_thetas)/2)], rate_priorMean, rate_priorSD, upper=log(kappa), log = TRUE ), dunif(((length(rate_thetas)/2) + 1):length(rate_thetas), 0, 366) )
+            logHR <- newllk + rate_newlogprior - oldllk - rate_oldlogprior
+          }
 
           if ( log( runif(1) ) < logHR ) {
             # Accept new state sequence
             accSwitch[iter] <- 1
             switch <- newSwitch
+            if(!is.na(model)) {
+              # Accept new rate parameter values
+              accRateParam[iter] <- 1
+              rateparam <- rate_thetasprime
+              rate_oldlogprior <- rate_newlogprior
+            }
             data.list <- newData.list
             obs <- lapply( data.list, function( data ) { data[!is.na( data[,"x"] ),] } )
             oldllk <- newllk
             HmatAll <- newHmatAll
+          }
+          #if ( adapt & iter >= 1000 & iter <= adapt ) {
+          if ( adapt & iter > 1 & iter <= adapt ) {
+            rate_S <- adapt_S(rate_S, rate_u, min( 1, exp(logHR) ), iter )
           }
         }
 
@@ -332,13 +364,18 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
         ###############################
         ## 3. Update switching rates ##
         ###############################
-        if (!is.null(Q)) {
+        if (!is.null(Q) & is.na(model)) {
           Q <- lapply( ids, function( id ) { updateQ( nbStates = nbStates, data = data.list[[ id ]], switch = switch[[ id ]],
                                                       priorShape = priorShape, priorRate = priorRate,
                                                       priorCon = priorCon ) } )
           names(Q) <- ids
         } else {
           # update rate params
+          # On working scale [-Inf,Inf]
+          rate_u <- rnorm( length( rateparam ) )
+          rate_thetas <- log( rateparam ) + as.vector( rate_S %*% rate_u )
+          # On natural scale [0, Inf]
+          rate_thetasprime <- exp( rate_thetas )
         }
 
 
@@ -349,7 +386,7 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
         if (!is.null(Q)) {
           allrates[iter, , ] <- matrix( unlist( lapply( Q, function( q ){ q[ !diag( nbStates ) ] } ) ), ncol = length( ids ), nrow = nbStates * ( nbStates - 1 ) )
         } else {
-          #allrateparam[iter,]
+          allrateparam[iter,] <- rateparam
         }
 
         if( iter %% thinStates == 0 ){
