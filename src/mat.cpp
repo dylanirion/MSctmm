@@ -325,9 +325,10 @@ mat makeQ(double tau_pos, double tau_vel, double sigma, double dt) {
 
     } // end OUF/OUO
     //will need to change this if want to consider anisotropic
-    vec sig(4);
-    sig.fill(sigma);
-    Q = diagmat(sig) * Q;
+    Q(0,0) = Q(0,0) * sigma;
+    Q(0,1) = Q(0,1) * sigma;
+    Q(1,0) = Q(1,0) * sigma;
+    Q(1,1) = Q(1,1) * sigma;
 
     //IOU prior fix
     Q.replace(datum::nan, 0 );  // replace each NaN with 0
