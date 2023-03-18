@@ -180,7 +180,7 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
     }
 
     names(updateLim) <- ids
-    names(updateProbs) <- ids
+    if (exists("updateProbs")) names(updateProbs) <- ids
 
     if (is.null(tau_pos) | is.null(tau_vel) | is.null(sigma) | is.null(state0) )
       stop("'inits' should have components tau_pos, tau_vel, sigma, Q, and state")
