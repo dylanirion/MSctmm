@@ -135,7 +135,7 @@ runMCMC <- function(track, nbStates, nbIter, fixPar = NULL, fixMu = NULL, inits,
       }
       updateProbs <- props$updateProbs
     #} else {
-    #  updateProbs <- rep( list( props$UpdateProbs ), length( unique( track$ID ) ) )
+    #  updateProbs <- rep( list( props$updateProbs ), length( unique( track$ID ) ) )
     } else if (is.null(props$updateProbs)) {
         updateProbs <- lapply( 1:length(unique(track$ID)), function(i) { rep(1,length(updateLim[[i]][1]:updateLim[[i]][2]))/length(updateLim[[i]][1]:updateLim[[i]][2]) } )
     }
