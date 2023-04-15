@@ -8,65 +8,84 @@ runMCMC(
   track,
   nbStates,
   nbIter,
-  fixPar = NULL,
-  fixMu = NULL,
   inits,
+  fixed,
   priors,
-  knownStates,
   props,
   tunes,
   Hmat,
   updateState = TRUE,
-  adapt = FALSE
+  adapt = FALSE,
+  model = NA
 )
 }
 \arguments{
-\item{track}{Dataframe of data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}}
+\item{track}{data.frame. Data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}}
 
-\item{nbStates}{Number of states}
+\item{nbStates}{integer. Number of states}
 
-\item{nbIter}{Number of iterations}
+\item{nbIter}{integer. Number of iterations for the MCMC}
 
-\item{fixPar}{List of fixed parameter values (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}), with \code{"NA"} for parameters to estimate}
-
-\item{fixMu}{List of fixed OUF range centre coordinate pairs, with \code{"NA"} for IOU states or pairs to estimate}
-
-\item{inits}{List of initial parameters (\code{"tau_pos"}, \code{"tau_vel"}, \code{"sigma"}, \code{"Q"}, \code{"state"})}
-
-\item{priors}{List of parameters of prior distributions, with components:
+\item{inits}{list. Initial parameters:
 \itemize{
-  \item{"mean":} Vector of means for normal priors on movement parameters, of length \code{"3*nbStates"}
-  \item{"sd":} Vector of standard deviations for normal priors on movement parameters, of length \code{"3*nbStates"}
-  \item{"shape":} Vector of shapes of gamma priors for the transition rates
-  \item{"rate":} Vector of rates of gamma priors for the transition rates
-  \item{"con":} Vector of concentrations of Dirichlet priors for transition probabilities
+  \item{"tau_pos":} vector. Initial tau_pos for each state, of length \code{"nbStates"}
+  \item{"tau_vel":} vector. Initial tau_vel for each state, of length \code{"nbStates"}
+  \item{"sigma":} vector. Initial sigma for each state, of length \code{"nbStates"}
+  \item{"mu":} list. Initial OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states
+  \item{"Q":}
+  \item{"state":} vector. Initial state sequence, length \code{"nrow(track)"}
+  \item{"alpha":}
+  \item{"t_alpha":}
 }}
 
-\item{knownStates}{Vector of known states with \code{"NA"} or those to estimate.}
-
-\item{props}{List of parameters of proposal distributions, with components:
+\item{fixed}{list of fixed parameters:
 \itemize{
-  \item{"S":} Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
-  \item{"updateLim":} Vector of two values: min and max length of updated state sequence
-  \item{"updateProbs":} Probability for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
+  \item{"tau_pos":} vector. Fixed values for tau_pos for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
+  \item{"tau_vel":} vector. Fixed values for tau_vel for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
+  \item{"sigma":} vector. Fixed values for sigma for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
+  \item{"mu":} list. Fixed OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states or pairs to estimate
+  \item{"Q":} Unused
+  \item{"knownStates":} vector. Known states with \code{"NA"} for those to estimate. Length \code{"nrow(track)"}
+  \item{"kappa":}
+}}
+
+\item{priors}{list. Parameters of prior distributions, with components:
+\itemize{
+  \item{"mean":} vector. Means for normal priors on movement parameters, of length \code{"5*nbStates"}
+  \item{"sd":} vector. Standard deviations for normal priors on movement parameters, of length \code{"5*nbStates"}
+  \item{"shape":} vector. Shapes of gamma priors for the transition rates
+  \item{"rate":} vector. Rates of gamma priors for the transition rates
+  \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities
+  \item{"rate_mean":}
+  \item{"rate_sd":}
+}}
+
+\item{props}{list. Parameters of proposal distributions, with components:
+\itemize{
+  \item{"S":} matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
+  \item{"updateLim":} vector. Two values: min and max length of updated state sequence
+  \item{"updateProbs":} vector. Probabilities for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
   all values are equiprobable)
+  \item{"rate_S":}
 }}
 
-\item{tunes}{List of tuning parameters, with components:
+\item{tunes}{list. Tuning parameters, with components:
 \itemize{
-  \item{"thinStates":} Thinning factor for the posterior state sequences (needed because
+  \item{"thinStates":} integer. Thinning factor for the posterior state sequences (needed because
 of memory limitations)
 }}
 
-\item{Hmat}{Matrix of observation error variance (four columns, and one row
+\item{Hmat}{matrix. Observation error variance (four columns, and one row
 for each row of data)}
 
-\item{updateState}{Logical. If \code{"FALSE"}, the state process is not updated
+\item{updateState}{logical. If \code{"FALSE"}, the state process is not updated
 (for exploratory analysis only, useful for testing single state models)}
 
-\item{adapt}{Integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
+\item{adapt}{integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
 by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
 to a target acceptance rate of 23.4\%.}
+
+\item{model}{}
 }
 \description{
 Run MCMC iterations
