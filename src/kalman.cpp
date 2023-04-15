@@ -69,21 +69,21 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   vec sigma = param.subvec( 2 * nbState, 3 * nbState - 1 );
 
   // define all empty matrices and vectors needed for the Kalman Filter and likelihood calculation
-  mat Z { { 1, 0 ,0 ,0 }, { 0, 0, 1, 0 } }; // observation model which maps the true state space into the observed space ( P, Hk )
-  mat I( 4, 4, fill::eye );   // identity matrix
-  mat H( 2, 2, fill::zeros ); // the covariance of the observation noise ( error, Rk )
-  mat T( 4, 4 );              // state transition model which is applied to the previous state xk−1 ( Green, Fk )
-  mat Q( 4, 4 );              // covariance of the process noise ( Sigma, Q )
-  mat K( 4, 2, fill::zeros ); // Kalman Gain ( Gain, Kk )
-  cube u( 2, 3, nbData, fill::zeros );      // measurement residual ( zRes, yk )
-  cube iF( 2, 2, nbData, fill::zeros ); // inverse of residual covariance, residual "precision" ( isRes )
-  cube uiF( 2, 2, nbData, fill::zeros ); // measurement residual * inverse of residual covariance ( uisRes )
-  cube zRes( 2, 1, nbData, fill::zeros ); // final measurement residual
-  cube ziF( 2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
-  cube mu( 2, 1, nbData, fill::zeros);
-  colvec logdetF( nbData, fill::zeros ); // log determinant of residual covariance
-  mat mu_out( nbState, 2 );
-  mu_out.fill( NA_REAL );
+  mat Z{{1, 0 ,0 ,0}, {0, 0, 1, 0}};   // observation model which maps the true state space into the observed space (P, Hk)
+  mat I(4, 4, fill::eye);              // identity matrix
+  mat H(2, 2, fill::zeros);            // the covariance of the observation noise (error, Rk)
+  mat T(4, 4);                         // state transition model which is applied to the previous state xk−1 (Green, Fk)
+  mat Q(4, 4);                         // covariance of the process noise (Sigma, Q)
+  mat K(4, 2, fill::zeros);            // Kalman Gain ( Gain, Kk )
+  cube u(2, 3, nbData, fill::zeros);   // measurement residual (zRes, yk)
+  cube iF(2, 2, nbData, fill::zeros);  // inverse of residual covariance, residual "precision" (isRes)
+  cube uiF(2, 2, nbData, fill::zeros); // measurement residual * inverse of residual covariance (uisRes)
+  cube zRes(2, 1, nbData, fill::zeros);// final measurement residual
+  cube ziF(2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
+  cube mu(2, 1, nbData, fill::zeros);
+  colvec logdetF(nbData, fill::zeros); // log determinant of residual covariance
+  mat mu_out(nbState, 2);
+  mu_out.fill(NA_REAL);
 
   // vector to keep track of the indices for first positions that are IOU, and size
   uvec iou(nbData);
@@ -107,36 +107,36 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       dt(i) = datum::inf;
 
       // initialise state mean
-      aest = zeros( 4, 3 );
+      aest = zeros(4, 3);
       // and initial state covariance matrix
-      Pest = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
+      Pest = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma(S(i) - 1), dt(i));
     }
 
-    // update our estimate ( if, missing obs skip to prediction )
-    if( !R_IsNA( X( i, 0 ) ) ) {
-      H( 0, 0 ) = Hmat( i, 0 );
-      H( 1, 1 ) = Hmat( i, 1 );
-      H( 0, 1 ) = Hmat( i, 2 );
-      H( 1, 0 ) = Hmat( i, 3 );
-      mat aobs = join_rows( X.row(i).t(), eye( 2, 2 ) );
+    // update our estimate (if, missing obs skip to prediction)
+    if(!R_IsNA(X(i, 0))) {
+      H(0, 0) = Hmat(i, 0);
+      H(1, 1) = Hmat(i, 1);
+      H(0, 1) = Hmat(i, 2);
+      H(1, 0) = Hmat(i, 3);
+      mat aobs = join_rows(X.row(i).t(), eye(2, 2));
       // measurement residual (zRes, u)
-      u.slice(i) = aobs - ( Z * aest );
+      u.slice(i) = aobs - (Z * aest);
 
       // residual covariance (sRes, F)
       mat PestZt = Pest * Z.t();
-      PestZt = PestZt.replace( datum::nan, 0 );
+      PestZt = PestZt.replace(datum::nan, 0);
       mat ZPestZt = Z * PestZt;
-      ZPestZt = ZPestZt.replace( datum::nan, 0 );
-      mat F = ZPestZt + H;                                //residual covariance ( sRes, Sk )
+      ZPestZt = ZPestZt.replace(datum::nan, 0);
+      mat F = ZPestZt + H;                                //residual covariance (sRes, Sk)
       iF.slice(i) = F.i();
-      logdetF(i) = det(F) > 0 ? log( std::abs( det(F) ) ) : datum::inf;
-      uiF.slice(i) = iF.slice(i) * u.slice(i).submat( 0, 1, 1, 2 );
-      uiF.slice(i) = uiF.slice(i).replace( datum::nan, 0 );
+      logdetF(i) = det(F) > 0 ? log(std::abs(det(F))) : datum::inf;
+      uiF.slice(i) = iF.slice(i) * u.slice(i).submat(0, 1, 1, 2);
+      uiF.slice(i) = uiF.slice(i).replace(datum::nan, 0);
 
       // Kalman gain
       K = PestZt * iF.slice(i);
       //if gain is inf or nan, replace with Z
-      uvec idx = find_nonfinite( K );
+      uvec idx = find_nonfinite(K);
       mat Zt = Z.t();
       K(idx) = Zt(idx);
 
@@ -192,59 +192,59 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   } // end filter iterations
 
   // shed all missing (skipped) obs
-  uvec na_xy = find_nonfinite( X.col(0) );
-  u.shed_slices( na_xy );
-  iF.shed_slices( na_xy );
-  uiF.shed_slices( na_xy );
-  ziF.shed_slices( na_xy );
-  zRes.shed_slices( na_xy );
-  mu.shed_slices( na_xy );
-  X.shed_rows( na_xy );
-  S.shed_rows( na_xy );
+  uvec na_xy = find_nonfinite(X.col(0));
+  u.shed_slices(na_xy);
+  iF.shed_slices(na_xy);
+  uiF.shed_slices(na_xy);
+  ziF.shed_slices(na_xy);
+  zRes.shed_slices(na_xy);
+  mu.shed_slices(na_xy);
+  X.shed_rows(na_xy);
+  S.shed_rows(na_xy);
 
   // drop logDet for missing data and starting IOUs
-  uvec drop = join_cols( na_xy, iou.head(k) );
-  logdetF.shed_rows( drop );
+  uvec drop = join_cols(na_xy, iou.head(k));
+  logdetF.shed_rows(drop);
   N -= drop.size();
 
   // calculate state based mu
   // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
-  for( int i = 0; i < nbState; i++ ) {
+  for(int i = 0; i < nbState; i++) {
 
     // if IOU state, use first location for mu
     // @todo: do I need to do this per 'bout'
-    if( std::isinf( tau_pos( i ) ) ){
-      for( int j = 0; j < nbID; j++ ) {
-        uvec iou_idx = find( S == i + 1 );
-        uvec ind_idx = find( ID == j + 1 );
-        uvec idx = intersect( iou_idx, ind_idx );
-        if( idx.size() >= 1 ) {
-          mu.each_slice(idx) = X.row( idx.min() ).t();
+    if(std::isinf(tau_pos(i))){
+      for(int j = 0; j < nbID; j++) {
+        uvec iou_idx = find(S == i + 1);
+        uvec ind_idx = find(ID == j + 1);
+        uvec idx = intersect(iou_idx, ind_idx);
+        if(idx.size() >= 1) {
+          mu.each_slice(idx) = X.row(idx.min()).t();
         }
       }
 
 
-    // otherwise calculate mu from residuals
+    // otherwise calculate mu from residuals (maximum likelihood solution)
     } else {
-      uvec ouf_idx = find( S == i + 1 );        // Find indices where state i occurs
-      if( R_IsNA( fixmu( i * 2 ) ) && R_IsNA( fixmu( i * 2 + 1 ) ) ) {
-        cube uiF_ouf = uiF.slices(ouf_idx);
-        cube u_ouf = u.slices(ouf_idx);
-        cube D( 2, 1, 1 );
-        D.tube(0,0) = sum( uiF_ouf.tube(0,0) % u_ouf.tube(0,0), 2 );
-        D.tube(1,0) = sum( uiF_ouf.tube(1,1) % u_ouf.tube(1,0), 2 );
-        cube W = sum( uiF_ouf % u_ouf.tube(0,1,1,2), 2 );
-        //mat mu_m = inv( W.slice(0) ) * D.slice(0);
-        mat mu_m = solve( W.slice(0), eye(2,2) ) * D.slice(0);
+      uvec ouf_idx = find(S == i + 1);        // Find indices where state i occurs
+      if(R_IsNA(fixmu(i * 2)) && R_IsNA(fixmu(i * 2 + 1))) {
+        cube uiF_ouf = uiF.slices(ouf_idx);   // measurement residual * inverse of residual covariance
+        cube u_ouf = u.slices(ouf_idx);       // measurement residual
+        cube D(2, 1, 1);                      // 'B' in eqns B30, B31
+        D.tube(0,0) = sum(uiF_ouf.tube(0,0) % u_ouf.tube(0,0), 2); // data x
+        D.tube(1,0) = sum(uiF_ouf.tube(1,1) % u_ouf.tube(1,0), 2); // data y
+        cube W = sum(uiF_ouf % u_ouf.tube(0,1,1,2), 2);            // mean x, y
+        //mat mu_m = inv(W.slice(0)) * D.slice(0);
+        mat mu_m = solve(W.slice(0), eye(2,2)) * D.slice(0);
         mu.each_slice(ouf_idx) = mu_m;
         //save mu to output
-        mu_out( i, 0 ) = mu_m(0,0);
-        mu_out( i, 1 ) = mu_m(1,0);
+        mu_out(i, 0) = mu_m(0,0);
+        mu_out(i, 1) = mu_m(1,0);
       } else {
-        mu.each_slice(ouf_idx) = fixmu.subvec( i * 2, i * 2 + 1 );
+        mu.each_slice(ouf_idx) = fixmu.subvec(i * 2, i * 2 + 1);
         //save mu to output
-        mu_out( i, 0 ) = fixmu( i * 2 );
-        mu_out( i, 1 ) = fixmu( i * 2 + 1 );
+        mu_out(i, 0) = fixmu(i * 2);
+        mu_out(i, 1) = fixmu(i * 2 + 1);
       }
     }
   } // end mu
