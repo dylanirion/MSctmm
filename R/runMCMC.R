@@ -12,8 +12,8 @@
 #'   \item{"mu":} list. Initial OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states
 #'   \item{"Q":}
 #'   \item{"state":} vector. Initial state sequence, length \code{"nrow(track)"}
-#'   \item{"alpha":}
-#'   \item{"t_alpha":}
+#'   \item{"alpha":} vector. Length dependent on model choice
+#'   \item{"t_alpha":} vector. Length dependent on model choice
 #' }
 #' @param fixed list of fixed parameters:
 #' \itemize{
@@ -23,25 +23,25 @@
 #'   \item{"mu":} list. Fixed OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states or pairs to estimate
 #'   \item{"Q":} Unused
 #'   \item{"knownStates":} vector. Known states with \code{"NA"} for those to estimate. Length \code{"nrow(track)"}
-#'   \item{"kappa":}
+#'   \item{"kappa":} integer. Maximum transition rate to bound rates when they are modelled. Length 1
 #' }
 #' @param priors list. Parameters of prior distributions, with components:
 #' \itemize{
-#'   \item{"mean":} vector. Means for normal priors on movement parameters, of length \code{"5*nbStates"}
-#'   \item{"sd":} vector. Standard deviations for normal priors on movement parameters, of length \code{"5*nbStates"}
-#'   \item{"shape":} vector. Shapes of gamma priors for the transition rates
-#'   \item{"rate":} vector. Rates of gamma priors for the transition rates
-#'   \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities
-#'   \item{"rate_mean":}
-#'   \item{"rate_sd":}
+#'   \item{"mean":} vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+#'   of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
+#'   \item{"sd":} vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+#'   of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
+#'   \item{"shape":} vector. Shapes of gamma priors for the transition rates when Gibbs sampling
+#'   \item{"rate":} vector. Rates of gamma priors for the transition rates when Gibbs sampling
+#'   \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
 #' }
 #' @param props list. Parameters of proposal distributions, with components:
 #' \itemize{
 #'   \item{"S":} matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
+#'   Dimensions \code{"(5 * nbStates, 5 * nbStates)"} when not modelling rate parameters (\code{"model"} is \code{"NA"}) and \code{"(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))"} otherwise.
 #'   \item{"updateLim":} vector. Two values: min and max length of updated state sequence
 #'   \item{"updateProbs":} vector. Probabilities for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
 #'   all values are equiprobable)
-#'   \item{"rate_S":}
 #' }
 #' @param tunes list. Tuning parameters, with components:
 #' \itemize{
@@ -104,13 +104,11 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   }
   if (length(inits$state) != nrow(track))
     stop("'inits$state' has the wrong length, expected ", nrow(track), " but got ", length(inits$state))
-  if (is.null(inits$Q) & (is.null(inits$kappa) | is.null(inits$alpha) | is.null(inits$t_aplha))) {
-    stop("argument 'inits$Q' is null, expected ", paste(paste0("inits$", c("kappa", "alpha", "t_alpha")[which(sapply(inits[c("kappa", "alpha", "t_alpha")], is.null))]), collapse = ", "), " to be specified")
+  if (is.null(inits$Q) & (is.null(fixed$kappa) | is.null(inits$alpha) | is.null(inits$t_aplha) | is.na(model))) {
+    stop("argument 'inits$Q' is null, expected ", paste(c("fixed$kappa")[which(is.null(fixed$kappa))], paste0("inits$", c("alpha", "t_alpha")[which(sapply(inits[c("alpha", "t_alpha")], is.null))]), c("model")[which(is.na(model))], collapse = ", "), " to be specified")
   }
 
   # TODO: Check Q length/dims in both init and fixed
-  # TODO: Check not Q AND model NULL/NA one or the other
-  # TODO: Use missing(model) instead?
 
   # Check fixed arguments and lengths
   for (arg in c("tau_pos", "tau_vel", "sigma")) {
@@ -134,42 +132,54 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       stop("argument 'fixed$knownStates' has the wrong length, expected ", nrow(track), " but got ", length(fixed$knownStates))
     }
   }
-
-  # TODO update this based on length of mean and sd? if 5 * nbStates then shape rate, con needed
-  # If mean and sd includes rate_mean rate_sd, and model not null, etc, then shape rate con not needed
+  if (!is.null(fixed$kappa) & length(fixed$kappa) != 1)
+    stop("argument 'fixed$kappa' has the wrong length, expected ", 1, " but got ", length(fixed$kappa))
 
   # Check priors arguments and lengths
-  if (is.null(priors$mean) | is.null(priors$sd) | is.null(priors$shape) | is.null(priors$rate) | is.null(priors$con))
-    stop("argument 'priors' missing: ", paste(c("mean", "sd", "shape", "rate", "con")[which(sapply(priors[c("mean", "sd", "shape", "rate", "con")], is.null))], collapse = ", "))
+  if (is.null(priors$mean) | is.null(priors$sd))
+    stop("argument 'priors' missing: ", paste(c("mean", "sd")[which(sapply(priors[c("mean", "sd")], is.null))], collapse = ", "))
   for (arg in c("mean", "sd")) {
-    if (length(priors[[arg]]) != 5 * nbStates)
+    if (is.null(model) & length(priors[[arg]]) != 5 * nbStates)
       stop("argument 'priors$", arg,"' has the wrong length, expected ", 5 * nbStates, " but got ", length(priors[[arg]]))
+    if (!is.null(model) & length(priors[[arg]]) != 5 * nbStates + length(alpha) + length(t_alpha))
+      stop("argument 'priors$", arg,"' has the wrong length, expected ", 5 * nbStates + length(alpha) + length(t_alpha), " but got ", length(priors[[arg]]))
   }
-  for (arg in c("shape", "rate")) {
-    if (length(priors[[arg]]) != nbStates)
-      stop("argument 'priors$", arg,"' has the wrong length, expected ", nbStates, " but got ", length(priors[[arg]]))
+  if (is.na(model) & (is.null(priors$shape) | is.null(priors$rate) | is.null(priors$con)))
+    stop("argument 'model' is NA, but argument 'priors' missing: ", paste(c("shape", "rate", "con")[which(sapply(priors[c("shape", "rate", "con")], is.null))], collapse = ", "))
+  if (is.na(model)) {
+    for (arg in c("shape", "rate", "con")) {
+      if (length(priors[[arg]]) != nbStates)
+        stop("argument 'priors$", arg,"' has the wrong length, expected ", nbStates, " but got ", length(priors[[arg]]))
+    }
   }
-  # TODO: Check con length? 1 or nbStates?
-
-  # TODO: CHECK S dims?
 
   # Check props arguments and lengths
-  if (is.null(props$S) | is.null(props$updateLim))
-    stop("argument 'props' missing: ", paste(c("S", "updateLim")[which(sapply(props[c("S", "updateLim")], is.null))], collapse = ", "))
-  if ("list" %in% class(props$updateLim) & all(sapply(props$updateLim, length) != rep(2, length(unique(track$ID)))))
+  if (is.null(props$S) | (updateState & is.null(props$updateLim)))
+    stop("argument 'props' missing: ", paste(c("S")[which(is.null(props$S))], c("S")[which(updateState & is.null(props$S))], collapse = ", "))
+  if (is.na(model) & all(dims(props$S) != c(5 * nbStates, 5 * nbStates)))
+    stop("argument 'props$S' has the wrong dimensions, expected ", c(5 * nbStates, 5 * nbStates), " but got ", dims(props$S))
+  if (!is.na(model) & all(dims(props$S) != c(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))))
+    stop("argument 'props$S' has the wrong dimensions, expected ", c(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha)), " but got ", dims(props$S))
+  if (updateStaet & "list" %in% class(props$updateLim) & all(sapply(props$updateLim, length) != rep(2, length(unique(track$ID)))))
     stop("argument 'props$updateLim' has the wrong length, expected ", paste(rep(2, length(unique(track$ID))), collapse = " "), " but got ", paste(sapply(props$updateLim, length), collapse = " "))
-  if (!"list" %in% class(props$updateLim) & length(props$updateLim) != 2)
+  if (updateState & !"list" %in% class(props$updateLim) & length(props$updateLim) != 2)
     stop("argument 'props$updateLim' has the wrong length, expected ", 2, " but got ", length(props$updateLim))
-  if (!is.null(props$updateProbs) & class(props$updateLim) != class(props$updateProbs))
+  if (updateState & !is.null(props$updateProbs) & class(props$updateLim) != class(props$updateProbs))
     stop("argument 'props$updateProbs' provided but of wrong type, expected ", class(props$updateLim), " but got ", class(props$updateProbs))
-  if (!is.null(props$updateProbs) & "list" %in% class(props$updateProbs) & all(sapply(props$updateLim, length) != sapply(props$updateProbs, length)))
+  if (updateState & !is.null(props$updateProbs) & "list" %in% class(props$updateProbs) & all(sapply(props$updateLim, length) != sapply(props$updateProbs, length)))
     stop("argument 'props$updateProbs' has the wrong length, expected ", paste(sapply(props$updateLim, length), collapse = " "), " but got ", paste(sapply(props$updateProbs, length), collapse = " "))
-  if (!is.null(props$updateProbs) & !"list" %in% class(props$updateProbs) & length(props$updateProbs) != 2)
+  if (updateState & !is.null(props$updateProbs) & !"list" %in% class(props$updateProbs) & length(props$updateProbs) != 2)
     stop("argument 'props$updateProbs' has the wrong length, expected ", 2, " but got ", length(props$updateProbs))
 
-  # TODO warn when ignoring other argument (model present, etc.)
-  if (updateState && (!is.null(inits$Q) | !is.null(fixed$Q)))
-    warning("argument 'updateState' is TRUE, ignoring 'inits$Q', 'fixed$Q', 'priors$shape', 'priors$rate', 'priors$con'")
+  # TODO: Use missing(model) instead?
+  if (!updateState & (!is.null(inits$Q) | !is.null(fixed$Q)))
+    warning("argument 'updateState' is FALSE, ignoring 'inits$Q', 'fixed$Q', 'priors$shape', 'priors$rate', 'priors$con'")
+  if (!is.na(model) & (!is.null(inits$Q)))
+     warning("argument 'model' is not NA, ignoring 'inits$Q'")
+  if (!is.na(model) & (!is.null(priors$shape) | is.null(!priors$rate) | is.null(!priors$con)))
+    warning("argument 'model' is not NA, ignoring ", paste(paste0("priors$", c("shape", "rate", "con")[which(sapply(priors[c("shape", "rate", "con")], is.null))]), collapse = ", "))
+  if (is.na(model) & all(dim(S) > c(5 * nbStates, 5 * nbStates)))
+    warning("argument 'model' is NA, ignoring extra dimensions of 'props$S")
 
   ######################
   ## Unpack arguments ##
@@ -193,15 +203,38 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   state[which(!is.na(knownStates))] <- knownStates[which(!is.na(knownStates))]
 
   # unpack prior parameters
-  priorMean <- priors$mean
-  priorSD <- priors$sd
+  priorMean <- priors$mean[1:nbStates]
+  priorSD <- priors$sd[1:nbStates]
   priorShape <- priors$shape
   priorRate <- priors$rate
   priorCon <- priors$con
 
+  # check if rate matrix provided
+  # TODO just check model here?
+  if (!is.null(inits$Q) & length(inits$Q) == length(ids) & "list" %in% class(inits$Q)) {
+    Q <- inits$Q
+    names(Q) <- ids
+    kappa <- NULL
+    rateparam <- NULL
+  } else if (!is.null(inits$Q) & is.null(fixed$kappa)) {
+    Q <- rep(list(inits$Q), length(unique(track$ID)))
+    names(Q) <- ids
+    kappa <- NULL
+    ratePriorMean <- NULL
+    ratePriorSD <- NULL
+    rateparam <- NULL
+  } else { # if no rate matrix provided, rate params must be
+    Q <- NULL
+    kappa <- fixed$kappa
+    rateS <- props$S[((5 * nbStates) + 1):nrow(props$S), ((5 * nbStates) + 1):ncol(props$S)]
+    ratePriorMean <- priors$mean[(nbStates + 1):length(priors$mean)]
+    ratePriorSD <- priors$sd[(nbStates + 1):length(priors$mean)]
+    rateparam <- c(inits$alpha, inits$t_alpha)
+  }
+
   # unpack proposal parameters
-  S <- props$S
-  # TODO: CLEAN THIS UP
+  S <- props$S[1:(5 * nbStates), 1:(5 * nbStates)]
+  # TODO: CLEAN THIS UP?
   if ("list" %in% class(props$updateLim) & length(props$updateLim) == length(unique(track$ID))) {
     updateLim <- lapply(1:length(unique(track$ID)), function(i) {
       lim <- ceiling(props$updateLim[[i]] * nrow(track[which(track$ID == unique(track$ID)[i]), ]))
@@ -240,31 +273,6 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   known <- list()
   switch <- list()
   data.list <- list()
-
-  # TODO incorporate rate props and priors into main vectors and check them with above
-  # check if rate matrix provided
-  if (!is.null(inits$Q) & length(inits$Q) == length(ids) & "list" %in% class(inits$Q)) {
-    Q <- inits$Q
-    names(Q) <- ids
-    kappa <- NULL
-    rate_priorMean <- NULL
-    rate_priorSD <- NULL
-    rateparam <- NULL
-  } else if (!is.null(inits$Q) & is.null(fixed$kappa)) {
-    Q <- rep( list( inits$Q ), length( unique( track$ID ) ) )
-    names(Q) <- ids
-    kappa <- NULL
-    rate_priorMean <- NULL
-    rate_priorSD <- NULL
-    rateparam <- NULL
-  } else { # if no rate matrix provided, rate params must be
-    Q <- NULL
-    kappa <- fixed$kappa
-    rate_S <- props$rate_S
-    rate_priorMean <- priors$rate_mean
-    rate_priorSD <- priors$rate_sd
-    rateparam <- c(inits$alpha, inits$t_alpha)
-  }
 
   names(updateLim) <- ids
   if (exists("updateProbs")) names(updateProbs) <- ids
@@ -376,7 +384,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         # propose new rate params
         # On working scale [-Inf, Inf]
         rate_u <- rnorm(length(rateparam))
-        rate_thetas <- log(rateparam) + as.vector(rate_S %*% rate_u)
+        rate_thetas <- log(rateparam) + as.vector(rateS %*% rate_u)
         # On natural scale [0, Inf]
         rate_thetasprime <- exp(rate_thetas)
       } else {
@@ -414,7 +422,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newllk <- kalman_rcpp(data = newData.mat, param = param, fixmu = unlist(mu), Hmat = newHmatAll)$llk
       newlogprior <- getLogPrior(
         nbStates, param, mu, fixPar, fixMu, priorMean, priorSD,
-        rate_thetas, rate_priorMean, rate_priorSD, kappa, model
+        rate_thetas, ratePriorMean, ratePriorSD, kappa, model
       )
       logHR <- newllk + newlogprior - oldllk - oldlogprior
 
@@ -442,7 +450,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
       #if (adapt & iter >= 1000 & iter <= adapt) {
       if (adapt & iter > 1 & iter <= adapt) {
-        rate_S <- adapt_S(rate_S, rate_u, min(1, exp(logHR)), iter)
+        rateS <- adapt_S(rateS, rate_u, min(1, exp(logHR)), iter)
       }
     }
 
@@ -456,11 +464,17 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     while (!pass) {  # ensure tau_p >= tau_v
       # On working scale [-Inf,Inf]
       param_u <- rnorm(length(param))
-      param_thetas <- log(param) + as.vector(S %*% param_u)
+      # NB we could bound mu to -180,180 -90,90 but would need projected bounds
+      mu_u <- rnorm(length(mu))
+      param_thetas <- c(log(param)) + as.vector(S %*% param_u)
+      mu_thetas <- c(log(mu)) + as.vector(S %*% mu_u)
       # On natural scale [0, Inf]
       param_thetasprime <- unlist(fixPar)
+      mu_thetasprime <- unlist(fixMu)
       param_thetasprime[is.na(unlist(fixPar))] <- exp(param_thetas[is.na(unlist(fixPar))])
+      mu_thetasprime[is.na(unlist(fixMu))] <- exp(mu_thetas[is.na(unlist(fixMu))])
 
+      # hack to ensure tau_pos >= tau_vel (does actually limit models we can test)
       # is there potential to get stuck here?
       if (all(param_thetasprime[1:nbStates] >= param_thetasprime[(nbStates + 1):(2 * nbStates)])) {
         pass <- T
@@ -471,18 +485,19 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     data.mat <- do.call("rbind", data.list)
     data.mat <- data.mat[ , c("x", "y", "time", "ID", "state")]
     newlogprior <- getLogPrior(
-      nbStates, param_thetas, mu, fixPar, fixMu, priorMean, priorSD,
-      rateparam, rate_priorMean, rate_priorSD, kappa, model
+      nbStates, param_thetas, mu_thetas, fixPar, fixMu, priorMean, priorSD,
+      rateparam, ratePriorMean, ratePriorSD, kappa, model
     )
-    kalman <- kalman_rcpp(data = data.mat, param = param_thetasprime, fixmu = mu, Hmat = HmatAll)
+    kalman <- kalman_rcpp(data = data.mat, param = param_thetasprime, fixmu = mu_thetasprime, Hmat = HmatAll)
     newllk <- kalman$llk
-    mu <- as.vector(t(kalman$mu))
+    #mu <- as.vector(t(kalman$mu))
     logHR <- newllk + newlogprior - oldllk - oldlogprior
 
     if (log(runif(1)) < logHR) {
       # Accept new parameter values
       accParam[iter] <- 1
       param <- param_thetasprime
+      mu <- mu_thetasprime
       oldllk <- newllk
       oldlogprior <- newlogprior
     }
@@ -492,8 +507,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
       # calculate S by state instead
       for (i in 1:nbStates) {
-        index <- seq(i, length(param), by = nbStates)
-        S[index,index][is.na(unlist(fixPar)[index]), is.na(unlist(fixPar)[index])] <- adapt_S(S[index,index][is.na(unlist(fixPar)[index]), is.na(unlist(fixPar)[index])], param_u[index][is.na(unlist(fixPar)[index])], min(1, exp(logHR)), iter)
+        paramindex <- seq(i, length(param), by = nbStates)
+        S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], param_u[paramindex][is.na(unlist(fixPar)[paramindex])], min(1, exp(logHR)), iter)
+        muindex <- c(i * 2 - 1, i *2)
+        S[length(param) + muindex,length(param) + mundex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- adapt_S(S[length(param) + muindex,length(param) + mundex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], mu_u[muindex][is.na(unlist(fixMu)[muindex])], min(1, exp(logHR)), iter)
       }
     }
 
@@ -547,7 +564,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
 getLogPrior <- function(
     nbStates, param, mu, fixPar, fixMu, priorMean, priorSD,
-    rateparam, rate_priorMean, rate_priorSD, kappa, model) {
+    rateparam, ratePriorMean, ratePriorSD, kappa, model) {
   sum(
     dnorm(
       log(param[is.na(unlist(fixPar))]),
@@ -565,8 +582,8 @@ getLogPrior <- function(
       !is.na(model),
       msm::dtnorm(
         log(rateparam[1:(length(rateparam)/2)]),
-        rate_priorMean,
-        rate_priorSD,
+        ratePriorMean,
+        ratePriorSD,
         upper = log(kappa),
         log = TRUE
       ),

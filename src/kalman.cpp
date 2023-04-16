@@ -42,31 +42,34 @@ using namespace arma;
 // [[Rcpp::export]]
 List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
 
+  // TODO: when accommodating anisotropic case, param should probably be length param.size() / 2
+  // and we will need a (flattened?) sigma cube (matrix for each state)
+
   int nbData = data.n_rows;
   int N = nbData;
   int nbState = param.size() / 3;
   int nbID = 0;
 
   // unpack data
-  mat X = data.cols( 0, 1 );    // x, y
-  vec time = data.col( 2 );     // time
-  vec ID = data.col( 3 );       // ID
-  vec S = data.col( 4 );        // state
-  vec dt( nbData, fill::ones ); // time intervals
+  mat X = data.cols(0, 1);    // x, y
+  vec time = data.col(2);     // time
+  vec ID = data.col(3);       // ID
+  vec S = data.col(4);        // state
+  vec dt(nbData, fill::ones); // time intervals
   dt(0) = datum::inf;
-  dt.subvec( 1, nbData - 1 ) = diff( time );
+  dt.subvec(1, nbData - 1) = diff(time);
 
-  mat aest( 4, 3, fill::zeros );  // state estimate
+  mat aest(4, 3, fill::zeros);  // state estimate
   //  x    mu_x    0
   //  vx   mu_vx   0
   //  y    0       mu_y
   //  vy   0       mu_vy
-  mat Pest( 4, 4, fill::zeros );  //covariance estimate
+  mat Pest(4, 4, fill::zeros);  //covariance estimate
 
   // unpack parameters
-  vec tau_pos = param.subvec( 0, nbState - 1 );
-  vec tau_vel = param.subvec( nbState, 2 * nbState - 1 );
-  vec sigma = param.subvec( 2 * nbState, 3 * nbState - 1 );
+  vec tau_pos = param.subvec(0, nbState - 1);
+  vec tau_vel = param.subvec(nbState, 2 * nbState - 1);
+  vec sigma = param.subvec(2 * nbState, 3 * nbState - 1);
 
   // define all empty matrices and vectors needed for the Kalman Filter and likelihood calculation
   mat Z{{1, 0 ,0 ,0}, {0, 0, 1, 0}};   // observation model which maps the true state space into the observed space (P, Hk)
@@ -93,13 +96,13 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   double llk;
 
   // Kalman filter iterations
-  for( int i = 0; i < nbData; i++ ) {
+  for(int i = 0; i < nbData; i++) {
 
     // if first location or new individual
-    if( i == 0 || ID( i ) != ID( i - 1 ) ) {
+    if(i == 0 || ID(i) != ID(i - 1)) {
       nbID++;
       // if starting in IOU, keep track of index
-      if( std::isinf( tau_pos( S(i) - 1 ) ) ) {
+      if(std::isinf(tau_pos(S(i) - 1))) {
         iou(k) = i;
         k++;
       }
@@ -141,21 +144,21 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       K(idx) = Zt(idx);
 
       // update concurrent state estimate (zCon, aest)
-      aest = aest + ( K * u.slice(i) );
+      aest = aest + (K * u.slice(i));
       // update concurrent covariance estimate (sCon, Pest)
-      mat J = I - ( K * Z );
+      mat J = I - (K * Z);
       mat JPest = J * Pest;
-      JPest = JPest.replace( datum::nan, 0 );
+      JPest = JPest.replace(datum::nan, 0);
       mat KHKt = K * H * K.t();
-      KHKt = KHKt.replace( datum::nan, 0 );
+      KHKt = KHKt.replace(datum::nan, 0);
       Pest = JPest * J.t() + KHKt;
     }
 
 
     // proceed with forecast
-    if( i < nbData - 1 && ID( i ) == ID( i + 1 ) ) {
-      T = makeT( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), dt( i + 1 ) );
-      Q = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma( S( i + 1 ) - 1 ), dt( i + 1 ) );
+    if(i < nbData - 1 && ID(i) == ID(i + 1)) {
+      T = makeT(tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), dt(i + 1));
+      Q = makeQ(tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), sigma(S(i + 1) - 1), dt(i + 1));
 
       //predict state estimate (zFor, aest)
       aest = T * aest;
@@ -163,28 +166,28 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       //predict covariance estimate (sFor, Pest)
       mat tcon = Pest;
       bool any = tcon.has_inf();
-      if( any ) {
-        tcon = tcon.replace( datum::inf, 0 );
+      if(any) {
+        tcon = tcon.replace(datum::inf, 0);
       }
 
       Pest = T * tcon * T.t() + Q;
 
-      if( any ) {
+      if(any) {
         vec Pdiag = Pest.diag();
         bool anyP = Pdiag.has_inf();
         uvec idx(4);
         int l = 0;
-        if( anyP ) {
-          for( int j = 0; j < Pdiag.size(); j++ ){
-            if( std::isinf( Pdiag(j) ) ){
+        if(anyP) {
+          for(int j = 0; j < Pdiag.size(); j++){
+            if(std::isinf(Pdiag(j))){
               idx(l) = j;
               l++;
             }
           }
-          Pest.rows( idx.head(l) ).zeros();
-          Pest.cols( idx.head(l) ).zeros();
+          Pest.rows(idx.head(l)).zeros();
+          Pest.cols(idx.head(l)).zeros();
           vec Pdiag2 = Pest.diag();
-          Pdiag2( idx.head(l) ).fill( datum::inf );
+          Pdiag2(idx.head(l)).fill(datum::inf);
           Pest.diag() = Pdiag2;
         }
       }
@@ -250,18 +253,18 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   } // end mu
 
   // detrend
-  for( int i = 0; i < zRes.n_slices; ++i ) {
+  for(int i = 0; i < zRes.n_slices; ++i) {
     zRes.slice(i) = u.slice(i).col(0) - u.slice(i).cols(1,2) * mu.slice(i);
     ziF.slice(i) = iF.slice(i) * zRes.slice(i);
-    ziF.slice(i) = ziF.slice(i).replace( datum::nan, 0 );
+    ziF.slice(i) = ziF.slice(i).replace( datum::nan, 0);
   } //end detrend
 
-  double sigmaK = as_scalar( sum( sum( ziF % zRes, 2 ) ) ) / ( 2 * N );
+  double sigmaK = as_scalar(sum(sum(ziF % zRes, 2))) / (2 * N);
 
-  logDet = mean( logdetF );
+  logDet = mean(logdetF);
 
-  llk = -1 * ( sigmaK - 1 ) - logDet / 2;
-  llk = N * ( llk + ( ( -1 * log( 2 * M_PI ) - 1 ) ) );
+  llk = -1 * (sigmaK - 1) - logDet / 2;
+  llk = N * (llk + ((-1 * log(2 * M_PI) - 1)));
   llk = std::isnan(llk) ? -1 * datum::inf : llk;
 
   return List::create(

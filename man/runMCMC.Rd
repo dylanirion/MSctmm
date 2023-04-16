@@ -34,8 +34,8 @@ runMCMC(
   \item{"mu":} list. Initial OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states
   \item{"Q":}
   \item{"state":} vector. Initial state sequence, length \code{"nrow(track)"}
-  \item{"alpha":}
-  \item{"t_alpha":}
+  \item{"alpha":} vector. Length dependent on model choice
+  \item{"t_alpha":} vector. Length dependent on model choice
 }}
 
 \item{fixed}{list of fixed parameters:
@@ -46,27 +46,27 @@ runMCMC(
   \item{"mu":} list. Fixed OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states or pairs to estimate
   \item{"Q":} Unused
   \item{"knownStates":} vector. Known states with \code{"NA"} for those to estimate. Length \code{"nrow(track)"}
-  \item{"kappa":}
+  \item{"kappa":} integer. Maximum transition rate to bound rates when they are modelled. Length 1
 }}
 
 \item{priors}{list. Parameters of prior distributions, with components:
 \itemize{
-  \item{"mean":} vector. Means for normal priors on movement parameters, of length \code{"5*nbStates"}
-  \item{"sd":} vector. Standard deviations for normal priors on movement parameters, of length \code{"5*nbStates"}
-  \item{"shape":} vector. Shapes of gamma priors for the transition rates
-  \item{"rate":} vector. Rates of gamma priors for the transition rates
-  \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities
-  \item{"rate_mean":}
-  \item{"rate_sd":}
+  \item{"mean":} vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+  of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
+  \item{"sd":} vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+  of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
+  \item{"shape":} vector. Shapes of gamma priors for the transition rates when Gibbs sampling
+  \item{"rate":} vector. Rates of gamma priors for the transition rates when Gibbs sampling
+  \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
 }}
 
 \item{props}{list. Parameters of proposal distributions, with components:
 \itemize{
   \item{"S":} matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
+  Dimensions \code{"(5 * nbStates, 5 * nbStates)"} when not modelling rate parameters (\code{"model"} is \code{"NA"}) and \code{"(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))"} otherwise.
   \item{"updateLim":} vector. Two values: min and max length of updated state sequence
   \item{"updateProbs":} vector. Probabilities for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
   all values are equiprobable)
-  \item{"rate_S":}
 }}
 
 \item{tunes}{list. Tuning parameters, with components:
