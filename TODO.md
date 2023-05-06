@@ -18,3 +18,6 @@ covariates for each x,t
  fix kappa to all for certain number of transitions
 
 Semi Markov? transitions from hazard rate of distribution other than exponential
+
+RJMCMC?
+abstract out "model" arg (accept function, same for priors)
