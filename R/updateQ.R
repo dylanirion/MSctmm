@@ -31,9 +31,9 @@ updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon)
     r <- rgamma( n = nbStates, shape = shape, rate = rate )
 
     # sample transition probabilities
-    allCounts <- table( factor( data[-nrow( data ), "state"], levels = 1:nbStates ), factor( data[-1,"state"], levels = 1:nbStates ) )
-    nonDiagCounts <- matrix(t(allCounts)[!diag(nbStates)], nrow=nbStates, byrow=TRUE)
-    trProbs <- t(apply(nonDiagCounts, 1, function(x) rdirichlet( n = 1, alpha = x + priorCon ) ) )
+    allCounts <- table(factor(data[-nrow(data), "state"], levels = 1:nbStates), factor(data[-1,"state"], levels = 1:nbStates))
+    nonDiagCounts <- matrix(t(allCounts)[!diag(nbStates)], nrow = nbStates, byrow = TRUE)
+    trProbs <- t(sapply(1:nrow(nonDiagCounts), function(i) rdirichlet(n = 1, alpha = nonDiagCounts[i, ] + priorCon[-i])))
     # there is an NaN issue when any states are not observed
     # we can either set these all equal to 1/(nbStates-1) or I think more realistically,
     # randomly assign all the probability to one transition

@@ -4,7 +4,18 @@
 \alias{updateState}
 \title{Update state sequence}
 \usage{
-updateState(obs, knownStates, switch, updateLim, updateProbs = NULL, Q)
+updateState(
+  obs,
+  nbStates,
+  knownStates,
+  switch,
+  updateLim,
+  updateProbs = NULL,
+  Q = NULL,
+  rateparam = NULL,
+  kappa = NULL,
+  model = NULL
+)
 }
 \arguments{
 \item{obs}{Matrix of observations, with columns "x", "y", "time", and "state"}
@@ -19,7 +30,7 @@ updateState(obs, knownStates, switch, updateLim, updateProbs = NULL, Q)
 \item{updateProbs}{Vector of probabilities of picking each number from
 updateLim[1] to updateLim[2], for the length of the update interval}
 
-\item{Q}{Square matrix of transition rates}
+\item{kappa}{Upper bounds of transition rate}
 }
 \value{
 List of two elements:
