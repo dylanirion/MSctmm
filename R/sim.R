@@ -1,15 +1,15 @@
 #' Simulate from 2D IOU/OUF process
 #'
 #' @param obsTimes Vector of observation times
-#' @param tau_pos Parameter \eqn{tau[pos]} of the movement process
-#' @param tau_vel Parameter \eqn{tau[vel]} of the movement process
+#' @param tau_pos Parameter \eqn{tau_{pos}} of the movement process
+#' @param tau_vel Parameter \eqn{tau_{vel}} of the movement process
 #' @param sigma Parameter \eqn{sigma} of the movement process
 #' @param Q Infinitesimal generator matrix
 #'
 #' @return Simulated track
 #'
 #' @export
-sim <- function( obsTimes, tau_pos, tau_vel, sigma, Q ) {
+sim <- function(obsTimes, tau_pos, tau_vel, sigma, Q) {
   nbStates <- length( tau_pos )
   nbObs <- length( obsTimes )
   obsTimes <- obsTimes - obsTimes[1]

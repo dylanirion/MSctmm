@@ -18,24 +18,26 @@ updateState(
 )
 }
 \arguments{
-\item{obs}{Matrix of observations, with columns "x", "y", "time", and "state"}
+\item{obs}{Matrix of observations, with columns \code{x}, \code{y}, \code{time}, and \code{state}}
 
 \item{knownStates}{Vector of known, fixed states}
 
-\item{switch}{Matrix of state switches, with columns "time" and "state"}
+\item{switch}{Matrix of state switches, with columns \code{time} and \code{state}}
 
 \item{updateLim}{Vector of two elements: min and max length of updated interval
 (each an integer, corresponding to a number of observations)}
 
 \item{updateProbs}{Vector of probabilities of picking each number from
-updateLim[1] to updateLim[2], for the length of the update interval}
+updateLim\link{1} to updateLim\link{2}, for the length of the update interval}
 
 \item{kappa}{Upper bounds of transition rate}
 }
 \value{
 List of two elements:
-\item{newSwitch}{Updated matrix of transitions}
-\item{newData}{Updated matrix of all data (observations and transitions)}
+\itemize{
+\item newSwitch: Updated matrix of transitions
+\item newData: Updated matrix of all data (observations and transitions)
+}
 }
 \description{
 Update state sequence

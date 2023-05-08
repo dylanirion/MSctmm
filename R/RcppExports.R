@@ -11,12 +11,11 @@ getQ <- function(nbStates, alpha, t_alpha, time, lng, lat, model) {
 #' and MScrawl (Michelot and Blackwell, 2019).
 #'
 #' @name kalman_rcpp
-#' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-#' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
-#' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
-#' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
-#' @param Hmat Matrix of observation error variance (four columns, and one row
-#' for each row of data)
+#' @param data Matrix of data, including columns `x`, `y`, `time`, `ID` and `state` (in that order).
+#' @param nbStates Integer number of states.
+#' @param param Vector of movement parameters (`tau_vel`, `tau_pos`, and `sigma`)
+#' @param fixmu Vector of mean locations for the OUF process (`x`, `y`)
+#' @param Hmat Matrix of observation error variance (four columns, and one row for each row of data)
 #'
 #' @return Log-likelihood
 #'
@@ -38,8 +37,8 @@ getQ <- function(nbStates, alpha, t_alpha, time, lng, lat, model) {
 #' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
 #'
 #' @export
-kalman_rcpp <- function(data, param, fixmu, Hmat) {
-    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, param, fixmu, Hmat)
+kalman_rcpp <- function(data, nbStates, param, fixmu, Hmat) {
+    .Call('_MSctmm_kalman_rcpp', PACKAGE = 'MSctmm', data, nbStates, param, fixmu, Hmat)
 }
 
 #' Simulate a sample path from an endpoint conditioned CTMC by modified
@@ -65,10 +64,9 @@ sample_path_mr2 <- function(a, b, t0, t1, k, nbStates, alpha, t_alpha, model) {
 #' and MScrawl (Michelot and Blackwell, 2019).
 #'
 #' @name smooth_rcpp
-#' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-#' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
-#' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
-#' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
+#' @param data Matrix of data, including columns `x`, `y`, `time`, `ID` and `state` (in that order).
+#' @param param Vector of movement parameters (`tau_vel`, `tau_pos`, and `sigma`)
+#' @param fixmu Vector of mean locations for the OUF process (`x`, `y`)
 #' @param Hmat Matrix of observation error variance (four columns, and one row
 #' for each row of data)
 #'
@@ -92,8 +90,8 @@ sample_path_mr2 <- function(a, b, t0, t1, k, nbStates, alpha, t_alpha, model) {
 #' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
 #'
 #' @export
-smooth_rcpp <- function(data, param, fixmu, Hmat) {
-    .Call('_MSctmm_smooth_rcpp', PACKAGE = 'MSctmm', data, param, fixmu, Hmat)
+smooth_rcpp <- function(data, nbStates, param, fixmu, Hmat) {
+    .Call('_MSctmm_smooth_rcpp', PACKAGE = 'MSctmm', data, nbStates, param, fixmu, Hmat)
 }
 
 #' Make mu matrix

@@ -32,16 +32,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // kalman_rcpp
-List kalman_rcpp(arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
-RcppExport SEXP _MSctmm_kalman_rcpp(SEXP dataSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
+List kalman_rcpp(arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
+RcppExport SEXP _MSctmm_kalman_rcpp(SEXP dataSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< int >::type nbStates(nbStatesSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type fixmu(fixmuSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type Hmat(HmatSEXP);
-    rcpp_result_gen = Rcpp::wrap(kalman_rcpp(data, param, fixmu, Hmat));
+    rcpp_result_gen = Rcpp::wrap(kalman_rcpp(data, nbStates, param, fixmu, Hmat));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -88,16 +89,17 @@ RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEX
     return rcpp_result_gen;
 }
 // smooth_rcpp
-List smooth_rcpp(arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
-RcppExport SEXP _MSctmm_smooth_rcpp(SEXP dataSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
+List smooth_rcpp(arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
+RcppExport SEXP _MSctmm_smooth_rcpp(SEXP dataSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< int >::type nbStates(nbStatesSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type fixmu(fixmuSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type Hmat(HmatSEXP);
-    rcpp_result_gen = Rcpp::wrap(smooth_rcpp(data, param, fixmu, Hmat));
+    rcpp_result_gen = Rcpp::wrap(smooth_rcpp(data, nbStates, param, fixmu, Hmat));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -115,14 +117,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // makeSigma
-arma::mat makeSigma(double tau_pos, double tau_vel, double sigma, double dt);
+arma::mat makeSigma(double tau_pos, double tau_vel, arma::mat sigma, double dt);
 RcppExport SEXP _MSctmm_makeSigma(SEXP tau_posSEXP, SEXP tau_velSEXP, SEXP sigmaSEXP, SEXP dtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< double >::type tau_pos(tau_posSEXP);
     Rcpp::traits::input_parameter< double >::type tau_vel(tau_velSEXP);
-    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sigma(sigmaSEXP);
     Rcpp::traits::input_parameter< double >::type dt(dtSEXP);
     rcpp_result_gen = Rcpp::wrap(makeSigma(tau_pos, tau_vel, sigma, dt));
     return rcpp_result_gen;
@@ -147,9 +149,9 @@ RcppExport SEXP _MSctmm_RcppExport_registerCCallable() {
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MSctmm_getQ", (DL_FUNC) &_MSctmm_getQ, 7},
-    {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 4},
+    {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 5},
     {"_MSctmm_sample_path_mr2", (DL_FUNC) &_MSctmm_sample_path_mr2, 9},
-    {"_MSctmm_smooth_rcpp", (DL_FUNC) &_MSctmm_smooth_rcpp, 4},
+    {"_MSctmm_smooth_rcpp", (DL_FUNC) &_MSctmm_smooth_rcpp, 5},
     {"_MSctmm_makeMu", (DL_FUNC) &_MSctmm_makeMu, 3},
     {"_MSctmm_makeSigma", (DL_FUNC) &_MSctmm_makeSigma, 4},
     {"_MSctmm_RcppExport_registerCCallable", (DL_FUNC) &_MSctmm_RcppExport_registerCCallable, 0},

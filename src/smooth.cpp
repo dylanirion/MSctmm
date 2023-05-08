@@ -11,10 +11,9 @@ using namespace arma;
 //' and MScrawl (Michelot and Blackwell, 2019).
 //'
 //' @name smooth_rcpp
-//' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-//' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
-//' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
-//' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
+//' @param data Matrix of data, including columns `x`, `y`, `time`, `ID` and `state` (in that order).
+//' @param param Vector of movement parameters (`tau_vel`, `tau_pos`, and `sigma`)
+//' @param fixmu Vector of mean locations for the OUF process (`x`, `y`)
 //' @param Hmat Matrix of observation error variance (four columns, and one row
 //' for each row of data)
 //'
@@ -39,10 +38,9 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
+List smooth_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
 
   int nbData = data.n_rows;
-  int nbState = param.size() / 3;
   int nbID = 0;
 
   // unpack data
@@ -60,9 +58,19 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   cube Pfor( 4, 4, nbData, fill::zeros );  //covariance forecast
 
   // unpack parameters
-  vec tau_pos = param.subvec( 0, nbState - 1 );
-  vec tau_vel = param.subvec( nbState, 2 * nbState - 1 );
-  vec sigma = param.subvec( 2 * nbState, 3 * nbState - 1 );
+  vec tau_pos = param.subvec( 0, nbStates - 1 );
+  vec tau_vel = param.subvec( nbStates, 2 * nbStates - 1 );
+  cube sigma(2, 2, nbStates);
+  for(int i = 0; i < nbStates; i++) {
+    if (param.size() / nbStates == 3) {
+      sigma.slice(i)(0,0) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
+      sigma.slice(i)(1,1) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
+    } else if (param.size() / nbStates == 5) {
+      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
+      sigma.slice(i)(0,1) = param(2 * nbStates + (3 * i + 1));
+      sigma.slice(i)(1,0) = param(2 * nbStates + (3 * i + 1));
+    }
+  }
 
   // define all empty matrices and vectors needed for the Kalman Filter and Smoother
   mat Z { { 1, 0 ,0 ,0 }, { 0, 0, 1, 0 } }; // observation model which maps the true state space into the observed space ( P, Hk )
@@ -97,7 +105,7 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       // initialise state mean
       afor.row(i) = zeros( 1, 4 );
       // and initial state covariance matrix
-      Pfor.slice(i) = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma( S(i) - 1 ), dt(i) );
+      Pfor.slice(i) = makeQ( tau_pos( S(i) - 1 ), tau_vel( S(i) - 1 ), sigma.slice( S(i) - 1 ), dt(i) );
     }
 
     // update our estimate ( if, missing obs skip to prediction )
@@ -139,7 +147,7 @@ List smooth_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
     // proceed with forecast
     if( i < nbData - 1 && ID( i ) == ID( i + 1 ) ) {
       T.slice(i) = makeT( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), dt( i + 1 ) );
-      Q.slice(i) = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma( S( i + 1 ) - 1 ), dt( i + 1 ) );
+      Q.slice(i) = makeQ( tau_pos( S( i + 1 ) - 1 ), tau_vel( S( i + 1 ) - 1), sigma.slice( S( i + 1 ) - 1 ), dt( i + 1 ) );
 
       //predict state estimate (zFor, aest)
       afor.row(i + 1) = (T.slice(i) * aest.row(i).t()).t();

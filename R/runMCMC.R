@@ -1,70 +1,65 @@
 
 #' Run MCMC iterations
 #'
-#' @param track data.frame. Data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}
+#' @param track data.frame. Data, with columns `x`, `y`, `time`, and `ID`
 #' @param nbStates integer. Number of states
 #' @param nbIter integer. Number of iterations for the MCMC
 #' @param inits list. Initial parameters:
-#' \itemize{
-#'   \item{"tau_pos":} vector. Initial tau_pos for each state, of length \code{"nbStates"}
-#'   \item{"tau_vel":} vector. Initial tau_vel for each state, of length \code{"nbStates"}
-#'   \item{"sigma":} vector. Initial sigma for each state, of length \code{"nbStates"}
-#'   \item{"mu":} list. Initial OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states
-#'   \item{"Q":}
-#'   \item{"state":} vector. Initial state sequence, length \code{"nrow(track)"}
-#'   \item{"alpha":} vector. Length dependent on model choice
-#'   \item{"t_alpha":} vector. Length dependent on model choice
-#' }
+#'   * `tau_pos`: vector. Initial \eqn{tau_{pos}} for each state, of length `nbStates`
+#'   * `tau_vel`: vector. Initial \eqn{tau_{vel}} for each state, of length `nbStates`
+#'   * `sigma`: vector. Initial \eqn{sigma} for each state, of length `nbStates` for isotropic covariance or `3 * nbStates` for anisotropic covariance
+#'   * `mu`: list. Initial OUF range centre coordinate pairs `(x, y)`, with `NA` for IOU states
+#'   * `Q`:
+#'   * `state`: vector. Initial state sequence, length `nrow(track)`
+#'   * `alpha`: vector. Length dependent on model choice
+#'   * `t_alpha`: vector. Length dependent on model choice
 #' @param fixed list of fixed parameters:
-#' \itemize{
-#'   \item{"tau_pos":} vector. Fixed values for tau_pos for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-#'   \item{"tau_vel":} vector. Fixed values for tau_vel for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-#'   \item{"sigma":} vector. Fixed values for sigma for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-#'   \item{"mu":} list. Fixed OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states or pairs to estimate
-#'   \item{"Q":} Unused
-#'   \item{"knownStates":} vector. Known states with \code{"NA"} for those to estimate. Length \code{"nrow(track)"}
-#'   \item{"kappa":} integer. Maximum transition rate to bound rates when they are modelled. Length 1
-#' }
+#'   * `tau_pos`: vector. Fixed values of \eqn{tau_{pos}} for each state with `NA` for parameters to estimate. Length `nbStates`
+#'   * `tau_vel`: vector. Fixed values of \eqn{tau_{vel}} for each state with `NA` for parameters to estimate. Length `nbStates`
+#'   * `sigma`: vector. Fixed values of \eqn{sigma} for each state with `NA` for parameters to estimate.
+#'      Length `nbStates` for isotropic covariance, or `3 * nbStates` for anisotropic covariance
+#'   * `mu`: list. Fixed OUF range centre coordinate pairs `(x, y)`, with `NA` for IOU states or pairs to estimate
+#'   * `Q`: Unused
+#'   * `knownStates`: vector. Known states with `NA` for those to estimate. Length `nrow(track)`
+#'   * `kappa`: integer. Maximum transition rate to bound rates when they are modelled. Length 1
 #' @param priors list. Parameters of prior distributions, with components:
-#' \itemize{
-#'   \item{"mean":} vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-#'   of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
-#'   \item{"sd":} vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-#'   of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
-#'   \item{"shape":} vector. Shapes of gamma priors for the transition rates when Gibbs sampling
-#'   \item{"rate":} vector. Rates of gamma priors for the transition rates when Gibbs sampling
-#'   \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
-#' }
+#'   * `mean`: vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+#'   of length `5 * nbStates` for movement parameters or `5 * nbStates +
+#'   length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
+#'   * `sd`: vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+#'   of length `5 * nbStates` for movement parameters or `5 * nbStates +
+#'   length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
+#'   * `shape`: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
+#'   * `rate`: vector. Rates of gamma priors for the transition rates when Gibbs sampling
+#'   * `con`: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
 #' @param props list. Parameters of proposal distributions, with components:
-#' \itemize{
-#'   \item{"S":} matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
-#'   Dimensions \code{"(5 * nbStates, 5 * nbStates)"} when not modelling rate parameters (\code{"model"} is \code{"NA"}) and \code{"(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))"} otherwise.
-#'   \item{"updateLim":} vector. Two values: min and max length of updated state sequence
-#'   \item{"updateProbs":} vector. Probabilities for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
+#'   * `S`: matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is `SS'`.
+#'   Dimensions `(5 * nbStates, 5 * nbStates)` when not modelling rate
+#'   parameters (`model` is `NA`) and `(5 * nbStates + length(alpha) +
+#'   length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))`
+#'   otherwise.
+#'   * `updateLim`: vector. Two values: min and max length of updated state sequence
+#'   * `updateProbs`: vector. Probabilities for each element of `updateLim[1]:updateLim[2]` (if `NULL`,
 #'   all values are equiprobable)
-#' }
 #' @param tunes list. Tuning parameters, with components:
-#' \itemize{
-#'   \item{"thinStates":} integer. Thinning factor for the posterior state sequences (needed because
-#' of memory limitations)
-#' }
-#' @param Hmat matrix. Observation error variance (four columns, and one row
-#' for each row of data)
-#' @param updateState logical. If \code{"FALSE"}, the state process is not updated
-#' (for exploratory analysis only, useful for testing single state models)
-#' @param adapt integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
-#' by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
-#' to a target acceptance rate of 23.4\%.
-#' @param model
+#'   * `thinStates`: integer. Thinning factor for the posterior state sequences (needed because
+#'   of memory limitations)
+#' @param Hmat matrix. Observation error variance (four columns, and one row for
+#'   each row of data)
+#' @param updateState logical. If `FALSE`, the state process is not updated (for
+#'   exploratory analysis only, useful for testing single state models)
+#' @param adapt integer. If `adapt` > 0, use the the Robust Adaptive Metropolis
+#'   (RAM) algorithm by Vihola (2012) to update the proposal distribution for
+#'   each parameter at each iteration (up to `adapt` iterations) to a target
+#'   acceptance rate of 23.4%.
+#' @param model experimental
 #'
-#' @references
-#' Michelot, T., Blackwell, P.G. (2019).
-#' State‐switching continuous‐time correlated random walks.
-#' Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
+#' @references Michelot, T., Blackwell, P.G. (2019). State‐switching
+#'   continuous‐time correlated random walks. Methods Ecol Evol, 10: 637-649.
+#'   doi:10.1111/2041-210X.13154
 #'
-#' Vihola, M. (2012).
-#' Robust adaptive Metropolis algorithm with coerced acceptance rate.
-#' Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
+#'   Vihola, M. (2012). Robust adaptive Metropolis algorithm with coerced
+#'   acceptance rate. Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
 #' @examples
 #' \dontrun{
 #' }
@@ -144,7 +139,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   if (is.null(priors$mean) | is.null(priors$sd))
     stop("argument 'priors' missing: ", paste(c("mean", "sd")[which(sapply(priors[c("mean", "sd")], is.null))], collapse = ", "))
   for (arg in c("mean", "sd")) {
-    # We dont check for t_alpha here becaus eit has a uniform prior
+    # We dont check for t_alpha here because it has a uniform prior specified elsewhere
     if (is.na(model) & length(priors[[arg]]) != nbParam * nbStates)
       stop("argument 'priors$", arg,"' has the wrong length, expected ", nbParam * nbStates, " but got ", length(priors[[arg]]))
     if (!is.na(model) & length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha))
@@ -163,9 +158,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   if (is.null(props$S) | (updateState & is.null(props$updateLim)))
     stop("argument 'props' missing: ", paste(c("S")[which(is.null(props$S))], c("S")[which(updateState & is.null(props$S))], collapse = ", "))
   if (is.na(model) & all(dim(props$S) != c(nbParam * nbStates, nbParam * nbStates)))
-    stop("argument 'props$S' has the wrong dimensions, expected ", c(nbParam * nbStates, nbParam * nbStates), " but got ", dim(props$S))
+    stop("argument 'props$S' has the wrong dimensions, expected ", paste(c(nbParam * nbStates, nbParam * nbStates), collapse = ", "), " but got ", paste(dim(props$S), collapse = ", "))
   if (!is.na(model) & all(dim(props$S) != c(nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha), nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha))))
-    stop("argument 'props$S' has the wrong dimensions, expected ", c(nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha), nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)), " but got ", dim(props$S))
+    stop("argument 'props$S' has the wrong dimensions, expected ", paste(c(nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha), nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)), collpase = ", "), " but got ", paste(dim(props$S), collapse = ", "))
   if (updateState & "list" %in% class(props$updateLim) & all(sapply(props$updateLim, length) != rep(2, length(unique(track$ID)))))
     stop("argument 'props$updateLim' has the wrong length, expected ", paste(rep(2, length(unique(track$ID))), collapse = " "), " but got ", paste(sapply(props$updateLim, length), collapse = " "))
   if (updateState & !"list" %in% class(props$updateLim) & length(props$updateLim) != 2)
@@ -212,8 +207,8 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   state[which(!is.na(knownStates))] <- knownStates[which(!is.na(knownStates))]
 
   # unpack prior parameters
-  priorMean <- priors$mean[1:(5 * nbStates)]
-  priorSD <- priors$sd[1:(5 * nbStates)]
+  priorMean <- priors$mean[1:(nbParam * nbStates)]
+  priorSD <- priors$sd[1:(nbParam * nbStates)]
   priorShape <- priors$shape
   priorRate <- priors$rate
   priorCon <- priors$con
@@ -235,7 +230,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   } else { # if no rate matrix provided, rate params must be
     Q <- NULL
     kappa <- fixed$kappa
-    rateS <- props$S[((nbParam * nbStates) + 1):nrow(props$S), ((nbParam * nbStates) + 1):ncol(props$S)]
+    rateS <- props$S[(nbParam * nbStates + 1):nrow(props$S), (nbParam * nbStates + 1):ncol(props$S)]
     ratePriorMean <- priors$mean[(nbParam * nbStates + 1):length(priors$mean)]
     ratePriorSD <- priors$sd[(nbParam * nbStates + 1):length(priors$sd)]
     rateparam <- c(inits$alpha, inits$t_alpha)
@@ -327,8 +322,8 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   HmatAll <- matrix(0, nrow(data.mat), 4)
   HmatAll[which(!is.na(data.mat[ , "x"])), ] <- Hmat
 
-  # initial likelihood GETTING -INF HERE
-  oldllk <- kalman_rcpp(data = data.mat, param = param, fixmu = mu, Hmat = HmatAll)$llk
+  # initial likelihood
+  oldllk <- kalman_rcpp(data = data.mat, nbStates = nbStates, param = param, fixmu = mu, Hmat = HmatAll)$llk
 
   # initial log-prior
   oldlogprior <- getLogPrior(
@@ -344,7 +339,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   colnames(allParam) <- c(
     paste("tau_pos[", 1:nbStates, "]", sep = ""),
     paste("tau_vel[", 1:nbStates, "]", sep = ""),
-    paste("sigma[", 1:nbStates, "]", sep = ""), # TODO will be 3x for anisotropic
+    switch((nbParam == 7) + 1, paste("sigma[", 1:nbStates, "]", sep = ""), paste(c("sigma_x[", "sigma_y[", "sigma_xy["), rep(1:nbStates, each = 3), rep("]", nbStates * 3), sep = "")),
     paste(c("mu_x[", "mu_y["), rep(1:nbStates, each = 2), c("]", "]"), sep = "")
   )
   allLLk <- rep(NA, nbIter)
@@ -426,7 +421,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newHmatAll[which(!is.na(newData.mat[ , "x"])), ] <- Hmat
 
       # Calculate acceptance ratio
-      newllk <- kalman_rcpp(data = newData.mat, param = param, fixmu = unlist(mu), Hmat = newHmatAll)$llk
+      newllk <- kalman_rcpp(data = newData.mat, nbStates = nbStates, param = param, fixmu = unlist(mu), Hmat = newHmatAll)$llk
       newlogprior <- getLogPrior(
         param, mu, fixPar, fixMu, priorMean, priorSD,
         newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
@@ -488,7 +483,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newParams[[2]], newMu[[2]], fixPar, fixMu, priorMean, priorSD,
       rateparam, ratePriorMean, ratePriorSD, kappa, model
     )
-    kalman <- kalman_rcpp(data = data.mat, param = newParams[[2]], fixmu = newMu[[2]], Hmat = HmatAll)
+    kalman <- kalman_rcpp(data = data.mat, nbStates = nbStates, param = newParams[[2]], fixmu = newMu[[2]], Hmat = HmatAll)
     newllk <- kalman$llk
     #mu <- as.vector(t(kalman$mu))
     logHR <- newllk + newlogprior - oldllk - oldlogprior

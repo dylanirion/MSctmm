@@ -1,9 +1,9 @@
 
 #' Update state sequence
 #'
-#' @param obs Matrix of observations, with columns "x", "y", "time", and "state"
+#' @param obs Matrix of observations, with columns `x`, `y`, `time`, and `state`
 #' @param knownStates Vector of known, fixed states
-#' @param switch Matrix of state switches, with columns "time" and "state"
+#' @param switch Matrix of state switches, with columns `time` and `state`
 #' @param updateLim Vector of two elements: min and max length of updated interval
 #' (each an integer, corresponding to a number of observations)
 #' @param updateProbs Vector of probabilities of picking each number from
@@ -11,8 +11,8 @@
 #' @param kappa Upper bounds of transition rate
 #'
 #' @return List of two elements:
-#' \item{newSwitch}{Updated matrix of transitions}
-#' \item{newData}{Updated matrix of all data (observations and transitions)}
+#'   * newSwitch: Updated matrix of transitions
+#'   * newData: Updated matrix of all data (observations and transitions)
 #'
 #' @details The update is done with the function \code{sample_path} from the
 #' package ECctmc (Fintzi, 2017).

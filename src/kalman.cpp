@@ -12,12 +12,11 @@ using namespace arma;
 //' and MScrawl (Michelot and Blackwell, 2019).
 //'
 //' @name kalman_rcpp
-//' @param data Matrix of data, including columns \code{"x"}, \code{"y"},
-//' \code{"time"}, \code{"ID"} and \code{"state"} (in that order).
-//' @param param Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})
-//' @param fixmu Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})
-//' @param Hmat Matrix of observation error variance (four columns, and one row
-//' for each row of data)
+//' @param data Matrix of data, including columns `x`, `y`, `time`, `ID` and `state` (in that order).
+//' @param nbStates Integer number of states.
+//' @param param Vector of movement parameters (`tau_vel`, `tau_pos`, and `sigma`)
+//' @param fixmu Vector of mean locations for the OUF process (`x`, `y`)
+//' @param Hmat Matrix of observation error variance (four columns, and one row for each row of data)
 //'
 //' @return Log-likelihood
 //'
@@ -40,14 +39,10 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
-
-  // TODO: when accommodating anisotropic case, param should probably be length param.size() / 2
-  // and we will need a (flattened?) sigma cube (matrix for each state)
+List kalman_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
 
   int nbData = data.n_rows;
   int N = nbData;
-  int nbState = param.size() / 3;
   int nbID = 0;
 
   // unpack data
@@ -67,9 +62,20 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   mat Pest(4, 4, fill::zeros);  //covariance estimate
 
   // unpack parameters
-  vec tau_pos = param.subvec(0, nbState - 1);
-  vec tau_vel = param.subvec(nbState, 2 * nbState - 1);
-  vec sigma = param.subvec(2 * nbState, 3 * nbState - 1);
+  vec tau_pos = param.subvec(0, nbStates - 1);
+  vec tau_vel = param.subvec(nbStates, 2 * nbStates - 1);
+  cube sigma(2, 2, nbStates);
+  for(int i = 0; i < nbStates; i++) {
+    if (param.size() / nbStates == 3) {
+      sigma.slice(i)(0,0) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
+      sigma.slice(i)(1,1) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
+    } else if (param.size() / nbStates == 5) {
+      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
+      sigma.slice(i)(0,1) = param(2 * nbStates + (3 * i + 1));
+      sigma.slice(i)(1,0) = param(2 * nbStates + (3 * i + 1));
+    }
+  }
+
 
   // define all empty matrices and vectors needed for the Kalman Filter and likelihood calculation
   mat Z{{1, 0 ,0 ,0}, {0, 0, 1, 0}};   // observation model which maps the true state space into the observed space (P, Hk)
@@ -85,7 +91,7 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
   cube ziF(2, 1, nbData, fill::zeros); // final measurement residual * inverse of residual covariance
   cube mu(2, 1, nbData, fill::zeros);
   colvec logdetF(nbData, fill::zeros); // log determinant of residual covariance
-  mat mu_out(nbState, 2);
+  mat mu_out(nbStates, 2);
   mu_out.fill(NA_REAL);
 
   // vector to keep track of the indices for first positions that are IOU, and size
@@ -112,7 +118,7 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
       // initialise state mean
       aest = zeros(4, 3);
       // and initial state covariance matrix
-      Pest = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma(S(i) - 1), dt(i));
+      Pest = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma.slice(S(i) - 1), dt(i));
     }
 
     // update our estimate (if, missing obs skip to prediction)
@@ -158,7 +164,7 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
     // proceed with forecast
     if(i < nbData - 1 && ID(i) == ID(i + 1)) {
       T = makeT(tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), dt(i + 1));
-      Q = makeQ(tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), sigma(S(i + 1) - 1), dt(i + 1));
+      Q = makeQ(tau_pos(S(i + 1) - 1), tau_vel(S(i + 1) - 1), sigma.slice(S(i + 1) - 1), dt(i + 1));
 
       //predict state estimate (zFor, aest)
       aest = T * aest;
@@ -212,7 +218,7 @@ List kalman_rcpp( arma::mat& data, arma::vec param, arma::vec fixmu, arma::mat& 
 
   // calculate state based mu
   // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
-  for(int i = 0; i < nbState; i++) {
+  for(int i = 0; i < nbStates; i++) {
 
     // if IOU state, use first location for mu
     // @todo: do I need to do this per 'bout'

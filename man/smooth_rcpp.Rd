@@ -4,15 +4,14 @@
 \alias{smooth_rcpp}
 \title{Kalman filter and smoother}
 \usage{
-smooth_rcpp(data, param, fixmu, Hmat)
+smooth_rcpp(data, nbStates, param, fixmu, Hmat)
 }
 \arguments{
-\item{data}{Matrix of data, including columns \code{"x"}, \code{"y"},
-\code{"time"}, \code{"ID"} and \code{"state"} (in that order).}
+\item{data}{Matrix of data, including columns \code{x}, \code{y}, \code{time}, \code{ID} and \code{state} (in that order).}
 
-\item{param}{Vector of movement parameters (\code{"tau_vel"}, \code{"tau_pos"}, and \code{"sigma"})}
+\item{param}{Vector of movement parameters (\code{tau_vel}, \code{tau_pos}, and \code{sigma})}
 
-\item{fixmu}{Vector of mean locations for the OUF process (\code{"x"}, \code{"y"})}
+\item{fixmu}{Vector of mean locations for the OUF process (\code{x}, \code{y})}
 
 \item{Hmat}{Matrix of observation error variance (four columns, and one row
 for each row of data)}

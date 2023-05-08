@@ -20,7 +20,7 @@ runMCMC(
 )
 }
 \arguments{
-\item{track}{data.frame. Data, with columns \code{"x"}, \code{"y"}, \code{"time"}, and \code{"ID"}}
+\item{track}{data.frame. Data, with columns \code{x}, \code{y}, \code{time}, and \code{ID}}
 
 \item{nbStates}{integer. Number of states}
 
@@ -28,64 +28,68 @@ runMCMC(
 
 \item{inits}{list. Initial parameters:
 \itemize{
-  \item{"tau_pos":} vector. Initial tau_pos for each state, of length \code{"nbStates"}
-  \item{"tau_vel":} vector. Initial tau_vel for each state, of length \code{"nbStates"}
-  \item{"sigma":} vector. Initial sigma for each state, of length \code{"nbStates"}
-  \item{"mu":} list. Initial OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states
-  \item{"Q":}
-  \item{"state":} vector. Initial state sequence, length \code{"nrow(track)"}
-  \item{"alpha":} vector. Length dependent on model choice
-  \item{"t_alpha":} vector. Length dependent on model choice
+\item \code{tau_pos}: vector. Initial \eqn{tau_{pos}} for each state, of length \code{nbStates}
+\item \code{tau_vel}: vector. Initial \eqn{tau_{vel}} for each state, of length \code{nbStates}
+\item \code{sigma}: vector. Initial \eqn{sigma} for each state, of length \code{nbStates} for isotropic covariance or \code{3 * nbStates} for anisotropic covariance
+\item \code{mu}: list. Initial OUF range centre coordinate pairs \verb{(x, y)}, with \code{NA} for IOU states
+\item \code{Q}:
+\item \code{state}: vector. Initial state sequence, length \code{nrow(track)}
+\item \code{alpha}: vector. Length dependent on model choice
+\item \code{t_alpha}: vector. Length dependent on model choice
 }}
 
 \item{fixed}{list of fixed parameters:
 \itemize{
-  \item{"tau_pos":} vector. Fixed values for tau_pos for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-  \item{"tau_vel":} vector. Fixed values for tau_vel for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-  \item{"sigma":} vector. Fixed values for sigma for each state with \code{"NA"} for parameters to estimate. Length \code{"nbStates"}
-  \item{"mu":} list. Fixed OUF range centre coordinate pairs \code{"(x, y)"}, with \code{"NA"} for IOU states or pairs to estimate
-  \item{"Q":} Unused
-  \item{"knownStates":} vector. Known states with \code{"NA"} for those to estimate. Length \code{"nrow(track)"}
-  \item{"kappa":} integer. Maximum transition rate to bound rates when they are modelled. Length 1
+\item \code{tau_pos}: vector. Fixed values of \eqn{tau_{pos}} for each state with \code{NA} for parameters to estimate. Length \code{nbStates}
+\item \code{tau_vel}: vector. Fixed values of \eqn{tau_{vel}} for each state with \code{NA} for parameters to estimate. Length \code{nbStates}
+\item \code{sigma}: vector. Fixed values of \eqn{sigma} for each state with \code{NA} for parameters to estimate.
+Length \code{nbStates} for isotropic covariance, or \code{3 * nbStates} for anisotropic covariance
+\item \code{mu}: list. Fixed OUF range centre coordinate pairs \verb{(x, y)}, with \code{NA} for IOU states or pairs to estimate
+\item \code{Q}: Unused
+\item \code{knownStates}: vector. Known states with \code{NA} for those to estimate. Length \code{nrow(track)}
+\item \code{kappa}: integer. Maximum transition rate to bound rates when they are modelled. Length 1
 }}
 
 \item{priors}{list. Parameters of prior distributions, with components:
 \itemize{
-  \item{"mean":} vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-  of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
-  \item{"sd":} vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-  of length \code{"5*nbStates"} for movement parameters or \code{"5*nbStates + length(alpha) + length(t_alpha)"} when estimating rate parameters \code{"alpha"}, \code{"t_alpha"} by MH
-  \item{"shape":} vector. Shapes of gamma priors for the transition rates when Gibbs sampling
-  \item{"rate":} vector. Rates of gamma priors for the transition rates when Gibbs sampling
-  \item{"con":} vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
+\item \code{mean}: vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+of length \code{5 * nbStates} for movement parameters or \code{5 * nbStates +   length(alpha)} when estimating rate parameters \code{alpha}, \code{t_alpha} by MH
+\item \code{sd}: vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
+of length \code{5 * nbStates} for movement parameters or \code{5 * nbStates +   length(alpha)} when estimating rate parameters \code{alpha}, \code{t_alpha} by MH
+\item \code{shape}: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
+\item \code{rate}: vector. Rates of gamma priors for the transition rates when Gibbs sampling
+\item \code{con}: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
 }}
 
 \item{props}{list. Parameters of proposal distributions, with components:
 \itemize{
-  \item{"S":} matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \code{"SS'"}.
-  Dimensions \code{"(5 * nbStates, 5 * nbStates)"} when not modelling rate parameters (\code{"model"} is \code{"NA"}) and \code{"(5 * nbStates + length(alpha) + length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))"} otherwise.
-  \item{"updateLim":} vector. Two values: min and max length of updated state sequence
-  \item{"updateProbs":} vector. Probabilities for each element of \code{"updateLim[1]:updateLim[2]"} (if \code{"NULL"},
-  all values are equiprobable)
+\item \code{S}: matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \verb{SS'}.
+Dimensions \verb{(5 * nbStates, 5 * nbStates)} when not modelling rate
+parameters (\code{model} is \code{NA}) and \verb{(5 * nbStates + length(alpha) +   length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))}
+otherwise.
+\item \code{updateLim}: vector. Two values: min and max length of updated state sequence
+\item \code{updateProbs}: vector. Probabilities for each element of \code{updateLim[1]:updateLim[2]} (if \code{NULL},
+all values are equiprobable)
 }}
 
 \item{tunes}{list. Tuning parameters, with components:
 \itemize{
-  \item{"thinStates":} integer. Thinning factor for the posterior state sequences (needed because
+\item \code{thinStates}: integer. Thinning factor for the posterior state sequences (needed because
 of memory limitations)
 }}
 
-\item{Hmat}{matrix. Observation error variance (four columns, and one row
-for each row of data)}
+\item{Hmat}{matrix. Observation error variance (four columns, and one row for
+each row of data)}
 
-\item{updateState}{logical. If \code{"FALSE"}, the state process is not updated
-(for exploratory analysis only, useful for testing single state models)}
+\item{updateState}{logical. If \code{FALSE}, the state process is not updated (for
+exploratory analysis only, useful for testing single state models)}
 
-\item{adapt}{integer. If \code{"adapt"} > 0, use the the Robust Adaptive Metropolis (RAM) algorithm
-by Vihola (2012) to update the proposal distribution for each parameter at each iteration (up to \code{"adapt"} iterations)
-to a target acceptance rate of 23.4\%.}
+\item{adapt}{integer. If \code{adapt} > 0, use the the Robust Adaptive Metropolis
+(RAM) algorithm by Vihola (2012) to update the proposal distribution for
+each parameter at each iteration (up to \code{adapt} iterations) to a target
+acceptance rate of 23.4\%.}
 
-\item{model}{}
+\item{model}{experimental}
 }
 \description{
 Run MCMC iterations
@@ -96,11 +100,10 @@ Run MCMC iterations
 
 }
 \references{
-Michelot, T., Blackwell, P.G. (2019).
-State‐switching continuous‐time correlated random walks.
-Methods Ecol Evol, 10: 637-649. doi:10.1111/2041-210X.13154
+Michelot, T., Blackwell, P.G. (2019). State‐switching
+continuous‐time correlated random walks. Methods Ecol Evol, 10: 637-649.
+doi:10.1111/2041-210X.13154
 
-Vihola, M. (2012).
-Robust adaptive Metropolis algorithm with coerced acceptance rate.
-Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
+Vihola, M. (2012). Robust adaptive Metropolis algorithm with coerced
+acceptance rate. Stat Comput, 22: 997-1008. doi:10.1007/s11222-011-9269-5
 }

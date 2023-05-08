@@ -9,9 +9,9 @@ sim(obsTimes, tau_pos, tau_vel, sigma, Q)
 \arguments{
 \item{obsTimes}{Vector of observation times}
 
-\item{tau_pos}{Parameter \eqn{tau[pos]} of the movement process}
+\item{tau_pos}{Parameter \eqn{tau_{pos}} of the movement process}
 
-\item{tau_vel}{Parameter \eqn{tau[vel]} of the movement process}
+\item{tau_vel}{Parameter \eqn{tau_{vel}} of the movement process}
 
 \item{sigma}{Parameter \eqn{sigma} of the movement process}
 
