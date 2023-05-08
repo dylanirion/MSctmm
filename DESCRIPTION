@@ -11,5 +11,6 @@ Description: Extends the R package ctmm (Calabrese et al., 2016) to
 License: GPL-3
 Imports: Rcpp (>= 0.12.16), ECctmc, gtools, prettyunits, ramcmc
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
+Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
