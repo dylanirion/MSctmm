@@ -24,7 +24,7 @@
 #'
 #' @importFrom ECctmc sample_path
 #' @export
-updateState <- function(obs, nbStates, knownStates, switch, updateLim, updateProbs=NULL, Q = NULL, rateparam = NULL, kappa = NULL, model = NULL)
+updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu, Hmat, updateProbs=NULL, Q = NULL, rateparam = NULL, kappa = NULL, model = NULL)
 {
     nbObs <- nrow(obs)
 
@@ -37,7 +37,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, updatePro
     } else {
         len <- updateLim[1]
     }
-    begin <- sample(1:(nbObs-len),size=1)
+    begin <- sample(1:(nbObs - len),size = 1)
     end <- begin + len
     Tbeg <- obs[begin,"time"]
     Tend <- obs[end,"time"]
@@ -57,10 +57,17 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, updatePro
         b = obs[end,"state"],
         t0 = Tbeg,
         t1 = Tend,
+        lng0 = obs[begin,"x"],
+        lat0 = obs[begin,"y"],
+        lng1 = obs[end,"x"],
+        lat1 = obs[end,"y"],
         k = kappa,
         nbStates = nbStates,
+        param = param,
+        mu = mu,
+        Hmat = Hmat[c(begin, end),],
         alpha = rateparam[1:(length(rateparam)/2)],
-        t_alpha = rateparam[((length(rateparam)/2)+1):length(rateparam)],
+        t_alpha = rateparam[((length(rateparam)/2) + 1):length(rateparam)],
         model = model
       )
     }

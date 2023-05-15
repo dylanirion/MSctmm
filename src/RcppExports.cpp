@@ -47,28 +47,35 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_path_mr2
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double k, const int nbStates, arma::vec alpha, arma::vec t_alpha, String model);
-static SEXP _MSctmm_sample_path_mr2_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model);
+static SEXP _MSctmm_sample_path_mr2_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const int >::type a(aSEXP);
     Rcpp::traits::input_parameter< const int >::type b(bSEXP);
     Rcpp::traits::input_parameter< const double >::type t0(t0SEXP);
     Rcpp::traits::input_parameter< const double >::type t1(t1SEXP);
+    Rcpp::traits::input_parameter< const double >::type lng0(lng0SEXP);
+    Rcpp::traits::input_parameter< const double >::type lat0(lat0SEXP);
+    Rcpp::traits::input_parameter< const double >::type lng1(lng1SEXP);
+    Rcpp::traits::input_parameter< const double >::type lat1(lat1SEXP);
     Rcpp::traits::input_parameter< const double >::type k(kSEXP);
     Rcpp::traits::input_parameter< const int >::type nbStates(nbStatesSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type t_alpha(t_alphaSEXP);
-    Rcpp::traits::input_parameter< String >::type model(modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_path_mr2(a, b, t0, t1, k, nbStates, alpha, t_alpha, model));
+    Rcpp::traits::input_parameter< const arma::vec >::type param(paramSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Hmat(HmatSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type t_alpha(t_alphaSEXP);
+    Rcpp::traits::input_parameter< const String >::type model(modelSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_path_mr2(a, b, t0, t1, lng0, lat0, lng1, lat1, k, nbStates, param, mu, Hmat, alpha, t_alpha, model));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
+RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr2_try(aSEXP, bSEXP, t0SEXP, t1SEXP, kSEXP, nbStatesSEXP, alphaSEXP, t_alphaSEXP, modelSEXP));
+        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr2_try(aSEXP, bSEXP, t0SEXP, t1SEXP, lng0SEXP, lat0SEXP, lng1SEXP, lat1SEXP, kSEXP, nbStatesSEXP, paramSEXP, muSEXP, HmatSEXP, alphaSEXP, t_alphaSEXP, modelSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -89,16 +96,16 @@ RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEX
     return rcpp_result_gen;
 }
 // smooth_rcpp
-List smooth_rcpp(arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat);
+List smooth_rcpp(const arma::mat& data, int nbStates, const arma::vec param, const arma::vec fixmu, const arma::mat& Hmat);
 RcppExport SEXP _MSctmm_smooth_rcpp(SEXP dataSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP fixmuSEXP, SEXP HmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat& >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data(dataSEXP);
     Rcpp::traits::input_parameter< int >::type nbStates(nbStatesSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type fixmu(fixmuSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type Hmat(HmatSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type param(paramSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type fixmu(fixmuSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Hmat(HmatSEXP);
     rcpp_result_gen = Rcpp::wrap(smooth_rcpp(data, nbStates, param, fixmu, Hmat));
     return rcpp_result_gen;
 END_RCPP
@@ -135,7 +142,7 @@ END_RCPP
 static int _MSctmm_RcppExport_validate(const char* sig) { 
     static std::set<std::string> signatures;
     if (signatures.empty()) {
-        signatures.insert("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const int,arma::vec,arma::vec,String)");
+        signatures.insert("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const arma::vec,const String)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -150,7 +157,7 @@ RcppExport SEXP _MSctmm_RcppExport_registerCCallable() {
 static const R_CallMethodDef CallEntries[] = {
     {"_MSctmm_getQ", (DL_FUNC) &_MSctmm_getQ, 7},
     {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 5},
-    {"_MSctmm_sample_path_mr2", (DL_FUNC) &_MSctmm_sample_path_mr2, 9},
+    {"_MSctmm_sample_path_mr2", (DL_FUNC) &_MSctmm_sample_path_mr2, 16},
     {"_MSctmm_smooth_rcpp", (DL_FUNC) &_MSctmm_smooth_rcpp, 5},
     {"_MSctmm_makeMu", (DL_FUNC) &_MSctmm_makeMu, 3},
     {"_MSctmm_makeSigma", (DL_FUNC) &_MSctmm_makeSigma, 4},

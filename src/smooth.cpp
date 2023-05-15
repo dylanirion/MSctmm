@@ -5,7 +5,7 @@ using namespace Rcpp;
 using namespace arma;
 #include "mat.hpp"
 
-//' Kalman filter and smoother
+//' Kalman smoother
 //'
 //' This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
 //' and MScrawl (Michelot and Blackwell, 2019).
@@ -38,7 +38,7 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-List smooth_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat& Hmat ) {
+List smooth_rcpp(const arma::mat& data, int nbStates, const arma::vec param, const arma::vec fixmu, const arma::mat& Hmat) {
 
   int nbData = data.n_rows;
   int nbID = 0;
@@ -109,7 +109,7 @@ List smooth_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixm
     }
 
     // update our estimate ( if, missing obs skip to prediction )
-    if( !R_IsNA( X( i, 0 ) ) ) {
+    if(!R_IsNA( X(i, 0)) && !R_IsNaN(X(i, 0))) {
       H( 0, 0 ) = Hmat( i, 0 );
       H( 1, 1 ) = Hmat( i, 1 );
       H( 0, 1 ) = Hmat( i, 2 );
@@ -184,37 +184,51 @@ List smooth_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixm
   } // end filter iterations
 
   // shed all missing (skipped) obs
-  uvec na_xy = find_nonfinite( X.col(0) );
-  aest.shed_rows( na_xy );
-  afor.shed_rows( na_xy );
-  Pest.shed_slices( na_xy );
-  T.shed_slices( na_xy );
-  Q.shed_slices( na_xy );
+  //uvec na_xy = find_nonfinite( X.col(0) );
+  //aest.shed_rows( na_xy );
+  //afor.shed_rows( na_xy );
+  //Pest.shed_slices( na_xy );
+  //T.shed_slices( na_xy );
+  //Q.shed_slices( na_xy );
 
   //backward smoother
-  for ( int j = aest.n_rows - 2; j >= 0; j-- ) {
-    if( ID( j ) == ID( j + 1 ) ) {
-      mat TL = Pest.slice(j) * T.slice(j).t();
-      TL = TL.replace( datum::inf, 0 );
-      mat INV = solve( Pfor.slice( j + 1 ), eye( 4, 4) );
+  for (int j = aest.n_rows - 2; j >= 0; j--) {
+    if(ID(j) == ID(j + 1)) {
+      mat TL(4, 4);
+      if(!R_IsNA(X(j, 0)) && !R_IsNaN(X(j, 0))) {
+        mat TL = Pest.slice(j) * T.slice(j).t();
+      } else {
+        mat TL = Pfor.slice(j) * T.slice(j).t();
+      }
+      TL = TL.replace(datum::inf, 0);
+      mat INV = solve(Pfor.slice(j + 1), eye(4, 4));
       TL = TL * INV;
+
       vec TLdiag = TL.diag();
       bool anyTL = TLdiag.has_nan();
       uvec idx = find_nonfinite(TLdiag);
-      if( anyTL ) {
-        TL.rows( idx ).zeros();
-        TL.cols( idx ).zeros();
+      if(anyTL) {
+        TL.rows(idx).zeros();
+        TL.cols(idx).zeros();
         vec TLdiag2 = TL.diag();
-        TLdiag2( idx ).fill( 1 );
+        TLdiag2(idx).fill(1);
         TL.diag() = TLdiag2;
       }
 
       L.slice(j) = TL;
-      mat J = I - ( L.slice(j) * T.slice(j) );
-      mat JPest = J * Pest.slice(j);
-      JPest = JPest.replace( datum::nan, 0 );
-      Pest.slice(j) = JPest * J.t() + ( L.slice(j) * ( Pest.slice(j + 1) + Q.slice(j) ) * L.slice(j).t() );
-      aest.row(j) = aest.row(j) + ( L.slice(j) * ( aest.row(j + 1) - afor.row(j + 1) ).t() ).t();
+      mat J = I - (L.slice(j) * T.slice(j));
+      if(!R_IsNA(X(j, 0)) && !R_IsNaN(X(j, 0))) {
+        mat JPest = J * Pest.slice(j);
+        JPest = JPest.replace(datum::nan, 0);
+        Pest.slice(j) = JPest * J.t() + (L.slice(j) * (Pest.slice(j + 1) + Q.slice(j)) * L.slice(j).t());
+        aest.row(j) = aest.row(j) + (L.slice(j) * (aest.row(j + 1) - afor.row(j + 1)).t()).t();
+      } else {
+        // prediction (no est)
+        mat JPest = J * Pfor.slice(j);
+        JPest = JPest.replace(datum::nan, 0);
+        Pest.slice(j) = JPest * J.t() + (L.slice(j) * (Pest.slice(j + 1) + Q.slice(j)) * L.slice(j).t());
+        aest.row(j) = afor.row(j) + (L.slice(j) * (aest.row(j + 1) - afor.row(j + 1)).t()).t();
+      }
     } else {
       Pest.slice(j) = Pest.slice(j);
       aest.row(j) = aest.row(j);
