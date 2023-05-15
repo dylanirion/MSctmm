@@ -5,22 +5,37 @@
 \title{Simulate a sample path from an endpoint conditioned CTMC by modified
 rejection sampling.}
 \usage{
-sample_path_mr2(a, b, t0, t1, k, nbStates, alpha, t_alpha, model)
+sample_path_mr2(
+  a,
+  b,
+  t0,
+  t1,
+  lng0,
+  lat0,
+  lng1,
+  lat1,
+  k,
+  nbStates,
+  param,
+  mu,
+  Hmat,
+  alpha,
+  t_alpha,
+  model
+)
 }
 \arguments{
 \item{a, b}{States at the interval endpoints, provided as integers
 corresponding to rows of the CTMC rate matrix.}
 
 \item{t0, t1}{times of the interval endpoints}
-
-\item{Q}{CTMC rate matrix}
 }
 \value{
 matrix whose first column is the sequence of transition times
 bookended by interval endpoints, and whose second column is the sequence of
 states
 
-Modified from sample_math_mr in ECctmc (Fintzi, 2018)
+Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 }
 \description{
 Simulate a sample path from an endpoint conditioned CTMC by modified

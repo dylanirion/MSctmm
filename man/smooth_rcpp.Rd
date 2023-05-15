@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{smooth_rcpp}
 \alias{smooth_rcpp}
-\title{Kalman filter and smoother}
+\title{Kalman smoother}
 \usage{
 smooth_rcpp(data, nbStates, param, fixmu, Hmat)
 }
