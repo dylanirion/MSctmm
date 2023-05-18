@@ -9,6 +9,12 @@ using namespace arma;
 PJ_CONTEXT *C = proj_context_create();
 PJ *P = proj_create_crs_to_crs(C, "+proj=tpeqd +lat_1=-34.09303 +lon_1=22.19052 +lat_2=-34.09303 +lon_2=22.25142 +x_0=0 +y_0=0 +datum=WGS84", "EPSG:4326", NULL);
 
+double clamp(double d, double min, double max) {
+  const double t = d < min ? min : d;
+  return t > max ? max : t;
+}
+
+
 // Make Q matrix
 // [[Rcpp::export]]
 Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha, const time_t time, const double lng, const double lat, const String model) {
@@ -23,6 +29,8 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
   Q.diag() = Q.diag() * -1;
 
   if (model == "time_out_time_in") {
+    t_alpha(0) = clamp(t_alpha(0), 0, 365);
+    t_alpha(1) = clamp(t_alpha(1), 0, 365);
     // time-varying rate in and out
     //FB -> trans
     Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (yday - t_alpha(0))));
