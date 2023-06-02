@@ -362,7 +362,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
   t0 <- Sys.time()
   for (iter in 1:nbIter) {
-    if (iter %% 100 == 0) {
+    if (iter < 100 | iter %% 100 == 0) {
       cat(
         "\rIteration ", iter, "/", nbIter, "... ",
         vague_dt(difftime(Sys.time(), t0, units = "secs") / iter * (nbIter - iter), "short"),
@@ -387,61 +387,68 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newData.list <- data.list
       newSwitch <- switch
 
-      if (is.null(Q) & !is.na(model)) {
-        # propose new rate params
-        newRateParams <- proposeParams(rateparam, NA, rateS)
-      } else {
-        newRateParams <- NULL
-      }
+      tryCatch({
+        if (is.null(Q) & !is.na(model)) {
+          # propose new rate params
+          newRateParams <- proposeParams(rateparam, NA, rateS)
+        } else {
+          newRateParams <- NULL
+        }
 
-      for (id in ids) {
-        upState <- updateState(
-          obs = obs[[id]],
-          nbStates = nbStates,
-          knownStates = known[[id]],
-          switch = switch[[id]],
-          updateLim = updateLim[[id]],
-          param = param,
-          mu = unlist(mu),
-          Hmat = HmatAll[which(data.mat[,"ID"] == id),],
-          updateProbs = updateProbs[[id]],
-          Q = switch(is.null(Q) + 1, Q[[id]], NULL), #https://www.r-bloggers.com/2017/02/use-switch-instead-of-ifelse-to-return-a-null/
-          rateparam = newRateParams[[2]],
-          kappa = kappa,
-          model = model
+        for (id in ids) {
+          upState <- updateState(
+            obs = obs[[id]],
+            nbStates = nbStates,
+            knownStates = known[[id]],
+            switch = switch[[id]],
+            updateLim = updateLim[[id]],
+            param = param,
+            mu = unlist(mu),
+            Hmat = HmatAll[which(data.mat[,"ID"] == id),],
+            updateProbs = updateProbs[[id]],
+            Q = switch(is.null(Q) + 1, Q[[id]], NULL), #https://www.r-bloggers.com/2017/02/use-switch-instead-of-ifelse-to-return-a-null/
+            rateparam = newRateParams[[2]],
+            kappa = kappa,
+            model = model
+          )
+
+          newData.list[[id]] <- upState$newData
+          newSwitch[[id]] <- upState$newSwitch
+          allLen[iter, which(ids == id)] <- upState$len
+        }
+
+        # flatten data
+        newData.mat <- do.call("rbind", newData.list)
+
+        # update Hmat (rows of 0s for transitions)
+        newHmatAll <- matrix(0, nrow(newData.mat), 4)
+        newHmatAll[which(!is.na(newData.mat[ , "x"])), ] <- Hmat
+
+        # Calculate acceptance ratio
+        newllk <- kalman_rcpp(data = newData.mat, nbStates = nbStates, param = param, fixmu = unlist(mu), Hmat = newHmatAll)$llk
+        newlogprior <- getLogPrior(
+          param, mu, fixPar, fixMu, priorMean, priorSD,
+          newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
         )
+        logHR <- newllk + newlogprior - oldllk - oldlogprior
 
-        newData.list[[id]] <- upState$newData
-        newSwitch[[id]] <- upState$newSwitch
-        allLen[iter, which(ids == id)] <- upState$len
-      }
+        if (log(runif(1)) < logHR) {
+          # Accept new state sequence
+          accSwitch[iter] <- 1
+          switch <- newSwitch
+          data.list <- newData.list
+          obs <- lapply(data.list, function(data) { data[!is.na(data[ , "x"]), ] })
+          oldllk <- newllk
+          rateparam <- newRateParams[[2]]
+          oldlogprior <- newlogprior
+          HmatAll <- newHmatAll
+        }
 
-      # flatten data
-      newData.mat <- do.call("rbind", newData.list)
-
-      # update Hmat (rows of 0s for transitions)
-      newHmatAll <- matrix(0, nrow(newData.mat), 4)
-      newHmatAll[which(!is.na(newData.mat[ , "x"])), ] <- Hmat
-
-      # Calculate acceptance ratio
-      newllk <- kalman_rcpp(data = newData.mat, nbStates = nbStates, param = param, fixmu = unlist(mu), Hmat = newHmatAll)$llk
-      newlogprior <- getLogPrior(
-        param, mu, fixPar, fixMu, priorMean, priorSD,
-        newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
-      )
-      logHR <- newllk + newlogprior - oldllk - oldlogprior
-
-      if (log(runif(1)) < logHR) {
-        # Accept new state sequence
-        accSwitch[iter] <- 1
-        switch <- newSwitch
-        data.list <- newData.list
-        obs <- lapply(data.list, function(data) { data[!is.na(data[ , "x"]), ] })
-        oldllk <- newllk
-        rateparam <- newRateParams[[2]]
-        oldlogprior <- newlogprior
-        HmatAll <- newHmatAll
-      }
+        #if (adapt & iter >= 1000 & iter <= adapt) {
+        if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
+          rateS <- adapt_S(rateS, newRateParams[[1]], min(1, exp(logHR)), iter)
+        }
+      })
 
       if (!is.null(Q) & is.na(model)) {
         Q <- lapply(ids, function(id) {
@@ -452,11 +459,6 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           )
         })
         names(Q) <- ids
-      }
-
-      #if (adapt & iter >= 1000 & iter <= adapt) {
-      if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
-        rateS <- adapt_S(rateS, newRateParams[[1]], min(1, exp(logHR)), iter)
       }
     }
 

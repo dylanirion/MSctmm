@@ -71,6 +71,12 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
         model = model
       )
     }
+
+    # check for autoreject
+    if (nrow(path) == 1 & all(path == -1)) {
+      stop("Exceeded path simulation iteration limit")
+    }
+
     path <- path[-c(1,nrow(path)),] # remove 1st and last rows (observations)
 
     # update state sequence

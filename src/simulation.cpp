@@ -23,6 +23,8 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
 
+  const int limit = 50000;
+
   // initialize vector of states
   Rcpp::IntegerVector states = Rcpp::seq_len(nbStates);
 
@@ -41,8 +43,9 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
   std::vector<double> vy_vec;
 
   // Sample paths until a valid path has been obtained
-  while(valid_path == false) {
-
+  int c = 0;
+  while(valid_path == false && c < limit) {
+    c++;
     // Set boolean to initiate forward sampling
     bool keep_going = true;
 
@@ -195,9 +198,15 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     }
   }
 
-  // Add the time and state at the right endpoint
-  time_vec.push_back(t1);
-  state_vec.push_back(b);
+  if(c == limit) {
+    // send auto reject ( fill path with -1s)
+    time_vec.push_back(-1);
+    state_vec.push_back(-1);
+  } else{
+    // Add the time and state at the right endpoint
+    time_vec.push_back(t1);
+    state_vec.push_back(b);
+  }
 
   // Collect the sequences of states and times into a matrix
   arma::mat path(time_vec.size(), 2);
