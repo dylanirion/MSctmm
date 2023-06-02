@@ -387,7 +387,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newData.list <- data.list
       newSwitch <- switch
 
-      tryCatch({
+      try({
         if (is.null(Q) & !is.na(model)) {
           # propose new rate params
           newRateParams <- proposeParams(rateparam, NA, rateS)
