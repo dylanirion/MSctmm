@@ -14,6 +14,7 @@ sample_path_mr2(
   lat0,
   lng1,
   lat1,
+  group,
   k,
   nbStates,
   param,

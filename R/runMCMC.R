@@ -68,6 +68,7 @@
 #' @importFrom prettyunits vague_dt pretty_dt
 #' @importFrom ramcmc adapt_S
 #' @importFrom msm dtnorm
+#' @importFrom rerddap griddap
 #' @export
 #'
 #' @useDynLib MSctmm
