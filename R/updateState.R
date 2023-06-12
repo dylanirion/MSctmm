@@ -92,19 +92,19 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
         newSwitch <- newSwitch[-fakeSwitch, ]
     if (nrow(newSwitch)) {
         newData <- rbind(obs,
-                         cbind("x" = NA, "y" = NA, "time" = newSwitch[ , "time"], "ID" = rep(obs[1, "ID"], nrow(newSwitch)), "state" =  newSwitch[ , "state"]))
+                         cbind("x" = NA, "y" = NA, "time" = newSwitch[ , "time"], "ID" = rep(obs[1, "ID"], nrow(newSwitch)), "state" =  newSwitch[ , "state"], "group" = rep(obs[1, "group"], nrow(newSwitch))))
         rownames(newData) <- NULL
     } else {
         newData <- obs
     }
 
-    newData <- newData[order(newData[,"time"]), c("x", "y", "time", "ID", "state")]
+    newData <- newData[order(newData[,"time"]), c("x", "y", "time", "ID", "state", "group")]
 
     # update state sequence for new switches
-    ind <- which(newData[,"time"] > Tbeg & newData[,"time"] < Tend)
+    ind <- which(newData[, "time"] > Tbeg & newData[, "time"] < Tend)
     for (t in ind) {
         if (!is.na(newData[t, "x"])) {
-            newData[t,"state"] <- newData[t - 1, "state"]
+            newData[t, "state"] <- newData[t - 1, "state"]
         }
     }
 
