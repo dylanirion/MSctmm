@@ -67,6 +67,7 @@
 #' @importFrom stats dnorm runif rnorm rexp rgamma
 #' @importFrom prettyunits vague_dt pretty_dt
 #' @importFrom ramcmc adapt_S
+#' @importFrom msm dtnorm
 #' @export
 #'
 #' @useDynLib MSctmm
@@ -260,7 +261,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     #  updateProbs <- rep(list(props$updateProbs), length(unique(track$ID)))
   } else if (is.null(props$updateProbs)) {
     updateProbs <- lapply(1:length(unique(track$ID)), function(i) {
-      rep(1,length(updateLim[[i]][1]:updateLim[[i]][2]))/length(updateLim[[i]][1]:updateLim[[i]][2])
+      rep(1, length(updateLim[[i]][1]:updateLim[[i]][2])) / length(updateLim[[i]][1]:updateLim[[i]][2])
     })
   }
 
@@ -288,7 +289,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       "y" = track[which(track$ID == id), "y"],
       "time" = track[which(track$ID == id), "time"],
       "ID" = as.numeric(track[which(track$ID == id), "ID"]),
-      "state" = state[which(track$ID == id)])
+      "state" = state[which(track$ID == id)],
+      "group" = ifelse("group" %in% colnames(track), track[which(track$ID == id), "group"], 1)
+    )
     known[[id]] <- knownStates[which(track$ID == id)]
     #colnames(obs[[id]]) <- c("x", "y", "time", "ID",  "state")
     indSwitch <- which(obs[[id]][-1, "state"] != obs[[id]][-nbObs, "state"]) + 1
@@ -299,24 +302,25 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
     if (!all(is.na(switch[[id]]))) {
       data.list[[id]] <- rbind(
-        obs[[id]][ , c( "x", "y", "time", "ID",  "state")],
+        obs[[id]][ , c( "x", "y", "time", "ID",  "state", "group")],
         cbind(
           "x" = NA,
           "y" = NA,
           "time" = switch[[id]][ , "time"],
           "ID" = id,
-          "state" = switch[[id]][ , "state"]
+          "state" = switch[[id]][ , "state"],
+          "group" = ifelse("group" %in% colnames(track), track[which(track$ID == id), "group"], 1)
         )
       )
       data.list[[id]] <- data.list[[id]][order(data.list[[id]][ , "time"]), ]
     } else {
-      data.list[[id]] <- obs[[id]][ , c("x", "y", "time", "ID",  "state")]
+      data.list[[id]] <- obs[[id]][ , c("x", "y", "time", "ID",  "state", "group")]
     }
   }
 
   # flatten data
   data.mat <- do.call("rbind", data.list)
-  data.mat <- data.mat[ , c("x", "y", "time", "ID", "state")]
+  data.mat <- data.mat[ , c("x", "y", "time", "ID", "state", "group")]
 
   # initialise Hmat (rows of 0s for transitions)
   HmatAll <- matrix(0, nrow(data.mat), 4)

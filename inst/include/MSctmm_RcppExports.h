@@ -25,17 +25,17 @@ namespace MSctmm {
         }
     }
 
-    inline arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
-        typedef SEXP(*Ptr_sample_path_mr2)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+    inline arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
+        typedef SEXP(*Ptr_sample_path_mr2)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_sample_path_mr2 p_sample_path_mr2 = NULL;
         if (p_sample_path_mr2 == NULL) {
-            validateSignature("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const arma::vec,const String)");
+            validateSignature("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const arma::vec,const String)");
             p_sample_path_mr2 = (Ptr_sample_path_mr2)R_GetCCallable("MSctmm", "_MSctmm_sample_path_mr2");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_sample_path_mr2(Shield<SEXP>(Rcpp::wrap(a)), Shield<SEXP>(Rcpp::wrap(b)), Shield<SEXP>(Rcpp::wrap(t0)), Shield<SEXP>(Rcpp::wrap(t1)), Shield<SEXP>(Rcpp::wrap(lng0)), Shield<SEXP>(Rcpp::wrap(lat0)), Shield<SEXP>(Rcpp::wrap(lng1)), Shield<SEXP>(Rcpp::wrap(lat1)), Shield<SEXP>(Rcpp::wrap(k)), Shield<SEXP>(Rcpp::wrap(nbStates)), Shield<SEXP>(Rcpp::wrap(param)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(Hmat)), Shield<SEXP>(Rcpp::wrap(alpha)), Shield<SEXP>(Rcpp::wrap(t_alpha)), Shield<SEXP>(Rcpp::wrap(model)));
+            rcpp_result_gen = p_sample_path_mr2(Shield<SEXP>(Rcpp::wrap(a)), Shield<SEXP>(Rcpp::wrap(b)), Shield<SEXP>(Rcpp::wrap(t0)), Shield<SEXP>(Rcpp::wrap(t1)), Shield<SEXP>(Rcpp::wrap(lng0)), Shield<SEXP>(Rcpp::wrap(lat0)), Shield<SEXP>(Rcpp::wrap(lng1)), Shield<SEXP>(Rcpp::wrap(lat1)), Shield<SEXP>(Rcpp::wrap(group)), Shield<SEXP>(Rcpp::wrap(k)), Shield<SEXP>(Rcpp::wrap(nbStates)), Shield<SEXP>(Rcpp::wrap(param)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(Hmat)), Shield<SEXP>(Rcpp::wrap(alpha)), Shield<SEXP>(Rcpp::wrap(t_alpha)), Shield<SEXP>(Rcpp::wrap(model)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

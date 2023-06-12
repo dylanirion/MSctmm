@@ -21,7 +21,7 @@ using namespace Rcpp;
 //'
 //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
 
   const int limit = 50000;
 
@@ -54,16 +54,17 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     state_vec.push_back(a);
     lng_vec.push_back(lng0);
     lat_vec.push_back(lat0);
+    //TODO move points on land to closest coastline?
 
     // set the current time, state and positions
     Rcpp::NumericVector cur_time(1, t0);
     Rcpp::NumericVector cur_lng(1, lng0);
     Rcpp::NumericVector cur_lat(1, lat0);
     Rcpp::IntegerVector cur_state(1, a);
-    double cur_rate = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, cur_state[0] - 1);
+    double cur_rate = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
 
     // get the state transition probabilities
-    Rcpp::NumericVector state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, _ ), 0);
+    Rcpp::NumericVector state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
 
     // If the beginning and end states don't match, sample first transition
     if(a != b) {
@@ -90,12 +91,13 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       Rcpp::NumericVector vy = pred["vy"];
       cur_lng = x[1];
       cur_lat = y[1];
+      //TODO move points on land to closest coastline?
 
 
       // update the rate of transition out of the new state
       // and update the state transition probabilities
-      cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, cur_state[0] - 1);
-      state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, _ ), 0);
+      cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
+      state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
 
       // Insert the next state and transition time into the
       // appropriate vectors
@@ -182,11 +184,12 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         Rcpp::NumericVector vy = pred["vy"];
         cur_lng = x[time_vec.size() + 1];
         cur_lat = y[time_vec.size() + 1];
+        //TODO move points on land to closest coastline?
 
         // update the rate of transition out of the new state
         // and update the state transition probabilities
-        cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, cur_state[0] - 1);
-        state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], model)(cur_state[0] - 1, _ ), 0);
+        cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
+        state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
         // update the state and time vectors
         time_vec.push_back(cur_time[0]);
         state_vec.push_back(cur_state[0]);
