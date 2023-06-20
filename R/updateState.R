@@ -61,7 +61,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
         lat0 = obs[begin, "y"],
         lng1 = obs[end, "x"],
         lat1 = obs[end, "y"],
-        group = obs[begin," group"],
+        group = obs[begin, "group"],
         k = kappa,
         nbStates = nbStates,
         param = param,
