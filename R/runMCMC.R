@@ -368,8 +368,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   t0 <- Sys.time()
   for (iter in 1:nbIter) {
     if (iter < 100 | iter %% 100 == 0) {
+      #REMOVE THIS
+      cat("\n")
       cat(
-        "\rIteration ", iter, "/", nbIter, "... ",
+        "\33[2K\rIteration ", iter, "/", nbIter, "... ",
         vague_dt(difftime(Sys.time(), t0, units = "secs") / iter * (nbIter - iter), "short"),
         " remaining (est)",
         ifelse(
@@ -377,9 +379,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           paste0(" -- accSwitch = ", round(sum(accSwitch) / iter * 100), "%"),
           ""
         ),
-        " -- accParam = ", round(sum(accParam) / iter * 100), "%",
-        "          ", sep = ""
+        " -- accParam = ", round(sum(accParam) / iter * 100), "%", sep = ""
       )
+      #REMOVE THIS
+      cat("\n")
     }
 
 
@@ -401,8 +404,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
       logHR <- -Inf
 
-      try({
+      try({ # catch autoreject signal
         for (id in ids) {
+          #TODO: FOR GHOST TOWN, WE NEED ALL DATA, NOT JUST OBS
           upState <- updateState(
             obs = obs[[id]],
             nbStates = nbStates,
@@ -455,7 +459,8 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
           rateS <- adapt_S(rateS, newRateParams[[1]], min(1, exp(logHR)), iter)
         }
-      }, silent = TRUE)
+      #}, silent = TRUE)
+      })
 
       if (!is.null(Q) & is.na(model)) {
         Q <- lapply(ids, function(id) {
@@ -631,7 +636,7 @@ getLogPrior <- function(
         dunif(
           log(rateparam[((length(rateparam)/2) + 1):length(rateparam)]),
           0,
-          366,
+          40, # NB: CHANGE THIS!
           log = TRUE
         ),
         0

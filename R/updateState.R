@@ -37,7 +37,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
     } else {
         len <- updateLim[1]
     }
-    begin <- sample(1:(nbObs - len),size = 1)
+    begin <- sample(1:(nbObs - len), size = 1)
     end <- begin + len
     Tbeg <- obs[begin, "time"]
     Tend <- obs[end, "time"]

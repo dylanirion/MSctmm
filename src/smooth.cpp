@@ -1,9 +1,9 @@
-#define ARMA_DONT_PRINT_ERRORS
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using namespace arma;
 #include "mat.hpp"
+#include "pdsolve.hpp"
 
 //' Kalman smoother
 //'
@@ -39,7 +39,6 @@ using namespace arma;
 //' @export
 // [[Rcpp::export]]
 List smooth_rcpp(const arma::mat& data, int nbStates, const arma::vec param, const arma::vec fixmu, const arma::mat& Hmat) {
-
   int nbData = data.n_rows;
   int nbID = 0;
 
@@ -201,7 +200,8 @@ List smooth_rcpp(const arma::mat& data, int nbStates, const arma::vec param, con
         mat TL = Pfor.slice(j) * T.slice(j).t();
       }
       TL = TL.replace(datum::inf, 0);
-      mat INV = solve(Pfor.slice(j + 1), eye(4, 4));
+      //mat INV = solve(Pfor.slice(j + 1), eye(4, 4));
+      mat INV = PDsolve(Pfor.slice(j + 1));
       TL = TL * INV;
 
       vec TLdiag = TL.diag();

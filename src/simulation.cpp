@@ -22,8 +22,7 @@ using namespace Rcpp;
 //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
 arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
-
-  const int limit = 50000;
+  const int limit = 1000;
 
   // initialize vector of states
   Rcpp::IntegerVector states = Rcpp::seq_len(nbStates);
@@ -44,6 +43,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
 
   // Sample paths until a valid path has been obtained
   int c = 0;
+  // TODO: how to memoize getQ?
   while(valid_path == false && c < limit) {
     c++;
     // Set boolean to initiate forward sampling
@@ -54,17 +54,32 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     state_vec.push_back(a);
     lng_vec.push_back(lng0);
     lat_vec.push_back(lat0);
-    //TODO move points on land to closest coastline?
 
     // set the current time, state and positions
     Rcpp::NumericVector cur_time(1, t0);
     Rcpp::NumericVector cur_lng(1, lng0);
     Rcpp::NumericVector cur_lat(1, lat0);
     Rcpp::IntegerVector cur_state(1, a);
-    double cur_rate = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
+    double cur_rate;
+    Rcpp::NumericMatrix Q;
+    try {
+      Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
+      cur_rate = -Q(cur_state[0] - 1, cur_state[0] - 1);
+    } catch(std::string e) { // catch sst errors
+      if (e.compare("sst") == 0) {
+        valid_path = false;
+        time_vec.clear();
+        state_vec.clear();
+        lng_vec.clear();
+        lat_vec.clear();
+        vx_vec.clear();
+        vy_vec.clear();
+        break;
+      }
+    }
 
     // get the state transition probabilities
-    Rcpp::NumericVector state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
+    Rcpp::NumericVector state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
 
     // If the beginning and end states don't match, sample first transition
     if(a != b) {
@@ -84,20 +99,33 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       newHmat.row(1) = {NA_REAL, NA_REAL, NA_REAL, NA_REAL};
       newHmat.row(2) = Hmat.row(1);
       Rcpp::List smooth = smooth_rcpp(data, nbStates, param, mu, newHmat);
-      Rcpp::DataFrame pred = smooth["pred"];
+      Rcpp::DataFrame pred = wrap(smooth["pred"]);
       Rcpp::NumericVector x = pred["x"];
       Rcpp::NumericVector y = pred["y"];
       Rcpp::NumericVector vx = pred["vx"];
       Rcpp::NumericVector vy = pred["vy"];
       cur_lng = x[1];
       cur_lat = y[1];
-      //TODO move points on land to closest coastline?
 
 
       // update the rate of transition out of the new state
       // and update the state transition probabilities
-      cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
-      state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
+      try {
+        Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
+        cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
+      } catch(std::string e) { // catch sst errors
+        if (e.compare("sst") == 0) {
+          valid_path = false;
+          time_vec.clear();
+          state_vec.clear();
+          lng_vec.clear();
+          lat_vec.clear();
+          vx_vec.clear();
+          vy_vec.clear();
+          break;
+        }
+      }
+      state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
 
       // Insert the next state and transition time into the
       // appropriate vectors
@@ -168,7 +196,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         arma::mat newHmat(time_vec.size() + 2, 4);
         data.row(0) = {lng0, lat0, t0, 0, 1.0 * a};
         newHmat.row(0) = Hmat.row(0);
-        for(int i = 1; i < time_vec.size(); i++) {
+        for(unsigned i = 1; i < time_vec.size(); i++) {
           data.row(i) = { lng_vec[i], lat_vec[i], time_vec[i], 0, 1.0 * state_vec[i]};
           newHmat.row(i) = {vx_vec[i], vy_vec[i], 0, 0};
         }
@@ -177,19 +205,32 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         newHmat.row(time_vec.size() + 1) = Hmat.row(1);
         data.row(time_vec.size() + 1) = {lng1, lat1, t1, 0, 1.0 * b};
         Rcpp::List smooth = smooth_rcpp(data, nbStates, param, mu, newHmat);
-        Rcpp::DataFrame pred = smooth["pred"];
+        Rcpp::DataFrame pred = wrap(smooth["pred"]);
         Rcpp::NumericVector x = pred["x"];
         Rcpp::NumericVector y = pred["y"];
         Rcpp::NumericVector vx = pred["vx"];
         Rcpp::NumericVector vy = pred["vy"];
         cur_lng = x[time_vec.size() + 1];
         cur_lat = y[time_vec.size() + 1];
-        //TODO move points on land to closest coastline?
 
         // update the rate of transition out of the new state
         // and update the state transition probabilities
-        cur_rate  = -getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, cur_state[0] - 1);
-        state_probs = pmax(getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model)(cur_state[0] - 1, _ ), 0);
+        try {
+          Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
+          cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
+        } catch(std::string e) { // catch sst errors
+          if (e.compare("sst") == 0) {
+            valid_path = false;
+            time_vec.clear();
+            state_vec.clear();
+            lng_vec.clear();
+            lat_vec.clear();
+            vx_vec.clear();
+            vy_vec.clear();
+            break;
+          }
+        }
+        state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
         // update the state and time vectors
         time_vec.push_back(cur_time[0]);
         state_vec.push_back(cur_state[0]);
@@ -201,7 +242,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     }
   }
 
-  if(c == limit) {
+  if(c == limit || (c == 1 && time_vec.size() == 0)) {
     // send auto reject ( fill path with -1s)
     time_vec.push_back(-1);
     state_vec.push_back(-1);

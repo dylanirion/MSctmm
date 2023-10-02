@@ -1,6 +1,6 @@
-#define ARMA_DONT_PRINT_ERRORS
 #include <RcppArmadillo.h>
 #include "mat.hpp"
+#include "pdsolve.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using namespace arma;
@@ -244,7 +244,8 @@ List kalman_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixm
         D.tube(1,0) = sum(uiF_ouf.tube(1,1) % u_ouf.tube(1,0), 2); // data y
         cube W = sum(uiF_ouf % u_ouf.tube(0,1,1,2), 2);            // mean x, y
         //mat mu_m = inv(W.slice(0)) * D.slice(0);
-        mat mu_m = solve(W.slice(0), eye(2,2)) * D.slice(0);
+        //mat mu_m = solve(W.slice(0), eye(2,2)) * D.slice(0);
+        mat mu_m = PDsolve(W.slice(0)) * D.slice(0);
         mu.each_slice(ouf_idx) = mu_m;
         //save mu to output
         mu_out(i, 0) = mu_m(0,0);
