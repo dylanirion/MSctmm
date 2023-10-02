@@ -18,8 +18,8 @@ double clamp(double d, double min, double max) {
 }
 
 Rcpp::Environment rerddap = Rcpp::Environment::namespace_env("rerddap");
-Rcpp::Function c = rerddap["cache_setup"];
-SEXP tmp = c(Rcpp::Named("full_path", "/home/dylan/rerddap/"));
+//Rcpp::Function c = rerddap["cache_setup"];
+//SEXP tmp = c(Rcpp::Named("full_path", "/home/dylan/rerddap/"));
 Rcpp::Function f = rerddap["griddap"];
 
 
