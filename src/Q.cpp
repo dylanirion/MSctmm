@@ -140,7 +140,7 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
         sst_df = f("jplMURSST41", Rcpp::Named("time", times), Rcpp::Named("longitude", lngs), Rcpp::Named("latitude", lats), Rcpp::Named("fields", "analysed_sst"), Rcpp::Named("fmt", "csv"), Rcpp::Named("url", "https://coastwatch.pfeg.noaa.gov/erddap"), Rcpp::Named("callopts", Rcpp::List::create(Rcpp::Named("ipresolve") = 1)));
       } catch(...) {
         Rcout << "\33[2K\r" << time_string << " Q" << "(" << i << ") " << (round(output_coords.xy.x * 100) / 100) << ", " << (round(output_coords.xy.y * 100) / 100) << ": " << (not_valid ? "not valid" : "valid") << " (waiting)";
-        //std::this_thread::sleep_for(std::chrono::minutes(1));
+        std::this_thread::sleep_for(std::chrono::minutes(1));
         continue;
       }
       Rcpp::NumericVector sst_vec = sst_df["analysed_sst"];
