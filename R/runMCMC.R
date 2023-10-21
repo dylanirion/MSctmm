@@ -368,8 +368,6 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   t0 <- Sys.time()
   for (iter in 1:nbIter) {
     if (iter < 100 | iter %% 100 == 0) {
-      #REMOVE THIS
-      cat("\n")
       cat(
         "\33[2K\rIteration ", iter, "/", nbIter, "... ",
         vague_dt(difftime(Sys.time(), t0, units = "secs") / iter * (nbIter - iter), "short"),
@@ -381,10 +379,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         ),
         " -- accParam = ", round(sum(accParam) / iter * 100), "%", sep = ""
       )
-      #REMOVE THIS
-      cat("\n")
     }
-
 
     ################################################
     ## 1. Update discrete state process and rates ##
