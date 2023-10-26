@@ -25,6 +25,27 @@ namespace MSctmm {
         }
     }
 
+    inline arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q) {
+        typedef SEXP(*Ptr_sample_path_mr)(SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_sample_path_mr p_sample_path_mr = NULL;
+        if (p_sample_path_mr == NULL) {
+            validateSignature("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&)");
+            p_sample_path_mr = (Ptr_sample_path_mr)R_GetCCallable("MSctmm", "_MSctmm_sample_path_mr");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_sample_path_mr(Shield<SEXP>(Rcpp::wrap(a)), Shield<SEXP>(Rcpp::wrap(b)), Shield<SEXP>(Rcpp::wrap(t0)), Shield<SEXP>(Rcpp::wrap(t1)), Shield<SEXP>(Rcpp::wrap(Q)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<arma::mat >(rcpp_result_gen);
+    }
+
     inline arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
         typedef SEXP(*Ptr_sample_path_mr2)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_sample_path_mr2 p_sample_path_mr2 = NULL;

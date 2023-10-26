@@ -22,7 +22,6 @@
 #' Time Markov Chains. R package version 0.2.4.
 #' https://CRAN.R-project.org/package=ECctmc
 #'
-#' @importFrom ECctmc sample_path
 #' @export
 updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu, Hmat, updateProbs=NULL, Q = NULL, rateparam = NULL, kappa = NULL, model = NULL)
 {
@@ -44,7 +43,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
 
     # sample state sequence conditional on start and end state
     if (!is.null(Q)) {
-      path <- sample_path(
+      path <- sample_path_mr(
         a = obs[begin, "state"],
         b = obs[end, "state"],
         t0 = Tbeg,
