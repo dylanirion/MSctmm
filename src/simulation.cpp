@@ -23,6 +23,7 @@ using namespace Rcpp;
  // [[Rcpp::export]]
  arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
    const int limit = 50000;
+   const int sublimit = 5000;
 
    // Get the number of states and initialize vector of states
    int n_states = Q.nrow();
@@ -38,6 +39,7 @@ using namespace Rcpp;
 
    // Sample paths until a valid path has been obtained
    int c = 0;
+   int j = 0;
    while(valid_path == false && c < limit) {
      c++;
 
@@ -77,7 +79,9 @@ using namespace Rcpp;
      }
 
      // Proceed with forward sampling algorithm
-     while(keep_going == true) {
+     j = 0;
+     while(keep_going == true && j < sublimit) {
+       j++;
 
        // check if the state is an absorbing state
        if(is_true(all(state_probs == 0))) {
@@ -135,8 +139,10 @@ using namespace Rcpp;
    }
 
    // Add the time and state at the right endpoint
-   if(c == limit || (c == 1 && time_vec.size() == 0)) {
+   if(c == limit || (c == 1 && time_vec.size() == 0) || j == sublimit) {
      // send auto reject ( fill path with -1s)
+     time_vec.clear();
+     state_vec.clear();
      time_vec.push_back(-1);
      state_vec.push_back(-1);
    } else{
