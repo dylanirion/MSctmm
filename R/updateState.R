@@ -48,7 +48,8 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
         b = obs[end, "state"],
         t0 = Tbeg,
         t1 = Tend,
-        Q = Q
+        Q = Q,
+        k = kappa
       )
     } else if (!is.null(kappa)) {
       path <- sample_path_mr2(

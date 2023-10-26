@@ -44,8 +44,8 @@ kalman_rcpp <- function(data, nbStates, param, fixmu, Hmat) {
 #' Simulate a sample path from an endpoint conditioned CTMC by modified
 NULL
 
-sample_path_mr <- function(a, b, t0, t1, Q) {
-    .Call('_MSctmm_sample_path_mr', PACKAGE = 'MSctmm', a, b, t0, t1, Q)
+sample_path_mr <- function(a, b, t0, t1, Q, k) {
+    .Call('_MSctmm_sample_path_mr', PACKAGE = 'MSctmm', a, b, t0, t1, Q, k)
 }
 
 #' Simulate a sample path from an endpoint conditioned CTMC by modified

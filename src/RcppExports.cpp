@@ -48,8 +48,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_path_mr
-arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q);
-static SEXP _MSctmm_sample_path_mr_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP QSEXP) {
+arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k);
+static SEXP _MSctmm_sample_path_mr_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP QSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const int >::type a(aSEXP);
@@ -57,15 +57,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type t0(t0SEXP);
     Rcpp::traits::input_parameter< const double >::type t1(t1SEXP);
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type Q(QSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_path_mr(a, b, t0, t1, Q));
+    Rcpp::traits::input_parameter< const double >::type k(kSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_path_mr(a, b, t0, t1, Q, k));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _MSctmm_sample_path_mr(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP QSEXP) {
+RcppExport SEXP _MSctmm_sample_path_mr(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP QSEXP, SEXP kSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr_try(aSEXP, bSEXP, t0SEXP, t1SEXP, QSEXP));
+        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr_try(aSEXP, bSEXP, t0SEXP, t1SEXP, QSEXP, kSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -182,7 +183,7 @@ END_RCPP
 static int _MSctmm_RcppExport_validate(const char* sig) { 
     static std::set<std::string> signatures;
     if (signatures.empty()) {
-        signatures.insert("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&)");
+        signatures.insert("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&,const double)");
         signatures.insert("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const arma::vec,const String)");
     }
     return signatures.find(sig) != signatures.end();
@@ -199,7 +200,7 @@ RcppExport SEXP _MSctmm_RcppExport_registerCCallable() {
 static const R_CallMethodDef CallEntries[] = {
     {"_MSctmm_getQ", (DL_FUNC) &_MSctmm_getQ, 8},
     {"_MSctmm_kalman_rcpp", (DL_FUNC) &_MSctmm_kalman_rcpp, 5},
-    {"_MSctmm_sample_path_mr", (DL_FUNC) &_MSctmm_sample_path_mr, 5},
+    {"_MSctmm_sample_path_mr", (DL_FUNC) &_MSctmm_sample_path_mr, 6},
     {"_MSctmm_sample_path_mr2", (DL_FUNC) &_MSctmm_sample_path_mr2, 17},
     {"_MSctmm_smooth_rcpp", (DL_FUNC) &_MSctmm_smooth_rcpp, 5},
     {"_MSctmm_makeMu", (DL_FUNC) &_MSctmm_makeMu, 3},

@@ -21,8 +21,8 @@ using namespace Rcpp;
  //'
  //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
  // [[Rcpp::export]]
- arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q) {
-   const int limit = 10000;
+ arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
+   const int limit = 50000;
 
    // Get the number of states and initialize vector of states
    int n_states = Q.nrow();
@@ -60,7 +60,7 @@ using namespace Rcpp;
      if(a != b) {
 
        // sample the first transition time
-       cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1-t0) * cur_rate))) / cur_rate;
+       cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1-t0) * k))) / k;
 
        // sample the next state
        cur_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);

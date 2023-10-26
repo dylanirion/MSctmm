@@ -25,17 +25,17 @@ namespace MSctmm {
         }
     }
 
-    inline arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q) {
-        typedef SEXP(*Ptr_sample_path_mr)(SEXP,SEXP,SEXP,SEXP,SEXP);
+    inline arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
+        typedef SEXP(*Ptr_sample_path_mr)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_sample_path_mr p_sample_path_mr = NULL;
         if (p_sample_path_mr == NULL) {
-            validateSignature("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&)");
+            validateSignature("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&,const double)");
             p_sample_path_mr = (Ptr_sample_path_mr)R_GetCCallable("MSctmm", "_MSctmm_sample_path_mr");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_sample_path_mr(Shield<SEXP>(Rcpp::wrap(a)), Shield<SEXP>(Rcpp::wrap(b)), Shield<SEXP>(Rcpp::wrap(t0)), Shield<SEXP>(Rcpp::wrap(t1)), Shield<SEXP>(Rcpp::wrap(Q)));
+            rcpp_result_gen = p_sample_path_mr(Shield<SEXP>(Rcpp::wrap(a)), Shield<SEXP>(Rcpp::wrap(b)), Shield<SEXP>(Rcpp::wrap(t0)), Shield<SEXP>(Rcpp::wrap(t1)), Shield<SEXP>(Rcpp::wrap(Q)), Shield<SEXP>(Rcpp::wrap(k)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
