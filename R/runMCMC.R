@@ -131,7 +131,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       stop("argument 'fixed$knownStates' has the wrong length, expected ", nrow(track), " but got ", length(fixed$knownStates))
     }
   }
-  if (!is.na(model) & !is.null(fixed$kappa) & length(fixed$kappa) != 1)
+  if (length(fixed$kappa) != 1)
     stop("argument 'fixed$kappa' has the wrong length, expected ", 1, " but got ", length(fixed$kappa))
 
   nbParam <- 4 + length(inits$sigma) / nbStates
@@ -220,12 +220,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   if (!is.null(inits$Q) & length(inits$Q) == length(unique(track$ID)) & "list" %in% class(inits$Q)) {
     Q <- inits$Q
     names(Q) <- unique(track$ID)
-    kappa <- NULL
-    rateparam <- NULL
-  } else if (!is.null(inits$Q) & is.null(fixed$kappa)) {
-    Q <- rep(list(inits$Q), length(unique(track$ID)))
-    names(Q) <- unique(track$ID)
-    kappa <- NULL
+    kappa <- fixed$kappa
     ratePriorMean <- NULL
     ratePriorSD <- NULL
     rateparam <- NULL
