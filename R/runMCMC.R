@@ -449,8 +449,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
           rateS <- adapt_S(rateS, newRateParams[[1]], min(1, exp(logHR)), iter)
         }
-      #}, silent = TRUE)
-      })
+      }, silent = TRUE)
 
       if (!is.null(Q) & is.na(model)) {
         Q <- lapply(ids, function(id) {
