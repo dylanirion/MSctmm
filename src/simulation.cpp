@@ -23,7 +23,7 @@ using namespace Rcpp;
  // [[Rcpp::export]]
  arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
    const int limit = 50000;
-   const int sublimit = 10000;
+   const int sublimit = 5000;
 
    // Get the number of states and initialize vector of states
    int n_states = Q.nrow();
