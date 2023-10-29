@@ -147,7 +147,7 @@ using namespace Rcpp;
    }
 
    // Add the time and state at the right endpoint
-   if(c == limit || (c == 1 && time_vec.size() == 0) || j == sublimit) {
+   if(c == limit || (c == 1 && time_vec.size() == 0)) {
      // send auto reject ( fill path with -1s)
      time_vec.clear();
      state_vec.clear();
