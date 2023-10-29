@@ -22,8 +22,8 @@ using namespace Rcpp;
  //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
  // [[Rcpp::export]]
  arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
-   const int limit = 50000;
-   const int sublimit = 5000;
+   const int limit = 100000;
+   const int sublimit = 100000;
 
    // Get the number of states and initialize vector of states
    int n_states = Q.nrow();
@@ -82,6 +82,14 @@ using namespace Rcpp;
      j = 0;
      while(keep_going == true && j < sublimit) {
        j++;
+
+       if(j == sublimit) {
+         keep_going = false;
+         valid_path = false;
+         time_vec.clear();
+         state_vec.clear();
+         break;
+       }
 
        // check if the state is an absorbing state
        if(is_true(all(state_probs == 0))) {
