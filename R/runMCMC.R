@@ -576,7 +576,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 }
 
 proposeParams <- function(param, fixedParams, S) {
-  sign <- ifelse(param < 0, -1, 1)
+  sign <- sign(param)
 
   # On working scale [-Inf, Inf]
   u <- rnorm(length(param))
@@ -598,12 +598,12 @@ getLogPrior <- function(
   return(
     sum(
       dnorm(
-        log(param[is.na(unlist(fixPar))]),
+        log(abs(param[is.na(unlist(fixPar))])) * sign(param[is.na(unlist(fixPar))]),
         priorMean[1:length(unlist(fixPar))][is.na(unlist(fixPar))],
         priorSD[1:length(unlist(fixPar))][is.na(unlist(fixPar))],
         log = TRUE
       ),
-      dnorm( # mu are not on log scale (can be negative)
+      dnorm( # mu are not on log scale (can be negative), could just do as above
         mu[is.na(unlist(fixMu)) & !is.na(mu)],
         priorMean[(length(unlist(fixPar)) + 1):length(priorMean)][is.na(unlist(fixMu)) & !is.na(mu)],
         priorSD[(length(unlist(fixPar)) + 1):length(priorSD)][is.na(unlist(fixMu)) & !is.na(mu)],
