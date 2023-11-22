@@ -597,7 +597,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   if (length(param) == 3 * nbStates) {
     thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
   } else if (length(param) == 5 * nbStates) {
-    thetasprime[which(seq_len(length(param)) %% 5 != 0)][which(seq_len(length(param)) %% 5 != 0)] <- exp(thetas[which(seq_len(length(param)) %% 5 != 0)][is.na(unlist(fixedParams))])
+    thetasprime[which(seq_len(length(param)) %% 5 != 0 & is.na(unlist(fixedParams)))] <- exp(thetas[which(seq_len(length(param)) %% 5 != 0 & is.na(unlist(fixedParams)))])
   }
   return(list(u, thetasprime))
 }
