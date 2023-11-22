@@ -387,7 +387,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
       if (is.null(Q) & !is.na(model)) {
         # propose new rate params
-        newRateParams <- proposeParams(rateparam, NA, rateS)
+        newRateParams <- proposeRates(rateparam, NA, rateS)
       } else {
         newRateParams <- NULL
       }
@@ -472,8 +472,8 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
       # On working scale [-Inf,Inf]
       newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)])
-      newMu <- proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
-      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeParams() but would need projected bounds
+      newMu <- proposeMus(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
 
       # hack to ensure tau_pos >= tau_vel (does actually limit models we can test)
       # is there potential to get stuck here?
@@ -508,8 +508,11 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
       # calculate S by state instead
       for (i in 1:nbStates) {
-        #TODO this will change with sigma = 3
-        paramindex <- seq(i, length(param), by = nbStates)
+        if(length(inits$sigma) == nbStates) {
+          paramindex <- seq(i, length(param), by = nbStates)
+        } else if(length(inits$sigma) == 3 * nbStates) {
+          paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (3:5) + nbStates * (i - 1))
+        }
         S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], min(1, exp(logHR)), iter)
         muindex <- c(i * 2 - 1, i * 2)
         if (any(is.na(unlist(fixMu)[muindex])))
@@ -576,19 +579,52 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 }
 
 proposeParams <- function(param, fixedParams, S) {
-  sign <- sign(param)
+  if(length(inits$sigma) == nbStates) {
+    param <- suppressWarnings(log(param))
+  } else if(length(inits$sigma) == 3 * nbStates) {
+    param[which(seq_len(length(param)) %% 5 != 0)] <- suppressWarnings(log(param[which(seq_len(length(param)) %% 5 != 0)]))
+  }
 
-  # On working scale [-Inf, Inf]
   u <- rnorm(length(param))
-  thetas <- suppressWarnings(c(log(abs(param))) + as.vector(S %*% u)) #In log(param) : NaNs produced
+  thetas <- param + as.vector(S %*% u)
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
   }
 
-  # On natural scale [0, Inf]
+  # On natural scale [0, Inf] for taus, sigma var, [-Inf, Inf] for sigma cov
   thetasprime <- unlist(fixedParams)
-  thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))]) * sign[is.na(unlist(fixedParams))]
+  if(length(inits$sigma) == nbStates) {
+    thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
+  } else if(length(inits$sigma) == 3 * nbStates) {
+    thetasprime[which(seq_len(length(param)) %% 5 != 0)][which(seq_len(length(param)) %% 5 != 0)] <- exp(thetas[which(seq_len(length(param)) %% 5 != 0)][is.na(unlist(fixedParams))])
+  }
+  return(list(u, thetasprime))
+}
+
+proposeRates <- function(param, fixedParams, S) {
+  u <- rnorm(length(param))
+  thetas <- log(param) + as.vector(S %*% u)
+
+  if (all(is.na(fixedParams))) {
+    fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
+  }
+
+  thetasprime <- unlist(fixedParams)
+  thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
+  return(list(u, thetasprime))
+}
+
+proposeMus <- function(param, fixedParams, S) {
+  u <- rnorm(length(param))
+  thetas <- param + as.vector(S %*% u)
+
+  if (all(is.na(fixedParams))) {
+    fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
+  }
+
+  thetasprime <- unlist(fixedParams)
+  thetasprime[is.na(unlist(fixedParams))] <- thetas[is.na(unlist(fixedParams))]
   return(list(u, thetasprime))
 }
 
@@ -598,12 +634,12 @@ getLogPrior <- function(
   return(
     sum(
       dnorm(
-        log(abs(param[is.na(unlist(fixPar))])) * sign(param[is.na(unlist(fixPar))]),
+        param[is.na(unlist(fixPar))],
         priorMean[1:length(unlist(fixPar))][is.na(unlist(fixPar))],
         priorSD[1:length(unlist(fixPar))][is.na(unlist(fixPar))],
         log = TRUE
       ),
-      dnorm( # mu are not on log scale (can be negative), could just do as above
+      dnorm(
         mu[is.na(unlist(fixMu)) & !is.na(mu)],
         priorMean[(length(unlist(fixPar)) + 1):length(priorMean)][is.na(unlist(fixMu)) & !is.na(mu)],
         priorSD[(length(unlist(fixPar)) + 1):length(priorSD)][is.na(unlist(fixMu)) & !is.na(mu)],
