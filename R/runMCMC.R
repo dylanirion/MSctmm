@@ -508,9 +508,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
       # calculate S by state instead
       for (i in 1:nbStates) {
-        if(length(inits$sigma) == nbStates) {
+        if (length(inits$sigma) == nbStates) {
           paramindex <- seq(i, length(param), by = nbStates)
-        } else if(length(inits$sigma) == 3 * nbStates) {
+        } else if (length(inits$sigma) == 3 * nbStates) {
           paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (3:5) + nbStates * (i - 1))
         }
         S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], min(1, exp(logHR)), iter)
@@ -582,7 +582,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   if (length(param) == 3 * nbStates) {
     param <- suppressWarnings(log(param))
   } else if (length(param) == 5 * nbStates) {
-    param[which(seq_len(length(param)) %% 5 != 0)] <- suppressWarnings(log(param[which(seq_len(length(param)) %% 5 != 0)]))
+    param[seq(2 * nbStates, length(param))[seq(2 * nbStates, length(param)) %% 5 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates, length(param))[seq(2 * nbStates, length(param)) %% 5 != 0]]))
   }
 
   u <- rnorm(length(param))
@@ -598,7 +598,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
     thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
   } else if (length(param) == 5 * nbStates) {
     thetasprime[which(is.na(unlist(fixedParams)))] <- thetas[which(is.na(unlist(fixedParams)))]
-    thetasprime[which(seq_len(length(param)) %% 5 != 0 & is.na(unlist(fixedParams)))] <- exp(thetas[which(seq_len(length(param)) %% 5 != 0 & is.na(unlist(fixedParams)))])
+    thetasprime[intersects(seq(2 * nbStates, length(param))[seq(2 * nbStates, length(param)) %% 5 != 0], which(is.na(unlist(fixedParams))))] <- exp(thetas[intersects(seq(2 * nbStates, length(param))[seq(2 * nbStates, length(param)) %% 5 != 0], which(is.na(unlist(fixedParams))))])
   }
   return(list(u, thetasprime))
 }
