@@ -471,7 +471,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     while (!pass) {  # ensure tau_p >= tau_v
 
       # On working scale [-Inf,Inf]
-      newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)])
+      newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
       newMu <- proposeMus(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
       # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
 
@@ -578,10 +578,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   )
 }
 
-proposeParams <- function(param, fixedParams, S) {
-  if(length(inits$sigma) == nbStates) {
+proposeParams <- function(param, fixedParams, S, nbStates) {
+  if (length(param) == 3 * nbStates) {
     param <- suppressWarnings(log(param))
-  } else if(length(inits$sigma) == 3 * nbStates) {
+  } else if (length(param) == 5 * nbStates) {
     param[which(seq_len(length(param)) %% 5 != 0)] <- suppressWarnings(log(param[which(seq_len(length(param)) %% 5 != 0)]))
   }
 
@@ -594,9 +594,9 @@ proposeParams <- function(param, fixedParams, S) {
 
   # On natural scale [0, Inf] for taus, sigma var, [-Inf, Inf] for sigma cov
   thetasprime <- unlist(fixedParams)
-  if(length(inits$sigma) == nbStates) {
+  if (length(param) == 3 * nbStates) {
     thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
-  } else if(length(inits$sigma) == 3 * nbStates) {
+  } else if (length(param) == 5 * nbStates) {
     thetasprime[which(seq_len(length(param)) %% 5 != 0)][which(seq_len(length(param)) %% 5 != 0)] <- exp(thetas[which(seq_len(length(param)) %% 5 != 0)][is.na(unlist(fixedParams))])
   }
   return(list(u, thetasprime))
