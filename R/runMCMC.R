@@ -511,7 +511,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         if (length(inits$sigma) == nbStates) {
           paramindex <- seq(i, length(param), by = nbStates)
         } else if (length(inits$sigma) == 3 * nbStates) {
-          paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (3:5) + nbStates * (i - 1))
+          paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (1:3) + (2 * nbStates) + (3 * (i - 1)))
         }
         S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], min(1, exp(logHR)), iter)
         muindex <- c(i * 2 - 1, i * 2)
@@ -582,6 +582,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   if (length(param) == 3 * nbStates) {
     param <- suppressWarnings(log(param))
   } else if (length(param) == 5 * nbStates) {
+    param[1:(2 * nbStates)] <- suppressWarnings(log(param[1:(2 * nbStates)]))
     param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]]))
   }
 
@@ -598,6 +599,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
     thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
   } else if (length(param) == 5 * nbStates) {
     thetasprime[which(is.na(unlist(fixedParams)))] <- thetas[which(is.na(unlist(fixedParams)))]
+    thetasprime[intersect(1:(2 * nbStates), which(is.na(unlist(fixedParams))))] <- exp(thetasprime[intersect(1:(2 * nbStates), which(is.na(unlist(fixedParams))))])
     thetasprime[intersect(seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0], which(is.na(unlist(fixedParams))))] <- exp(thetas[intersect(seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0], which(is.na(unlist(fixedParams))))])
   }
   return(list(u, thetasprime))
