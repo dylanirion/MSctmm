@@ -582,7 +582,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   if (length(param) == 3 * nbStates) {
     param <- suppressWarnings(log(param))
   } else if (length(param) == 5 * nbStates) {
-    param[seq(2 * nbStates + 1, length(param))[seq(2 * nbStates, length(param) - 1) %% 3 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates + 1, length(param))[seq(2 * nbStates, length(param) - 1) %% 3 != 0]]))
+    param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]]))
   }
 
   u <- rnorm(length(param))
@@ -598,7 +598,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
     thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
   } else if (length(param) == 5 * nbStates) {
     thetasprime[which(is.na(unlist(fixedParams)))] <- thetas[which(is.na(unlist(fixedParams)))]
-    thetasprime[intersect(seq(2 * nbStates + 1, length(param))[seq(2 * nbStates, length(param) - 1) %% 3 != 0], which(is.na(unlist(fixedParams))))] <- exp(thetas[intersect(seq(2 * nbStates + 1, length(param))[seq(2 * nbStates, length(param) - 1) %% 3 != 0], which(is.na(unlist(fixedParams))))])
+    thetasprime[intersect(seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0], which(is.na(unlist(fixedParams))))] <- exp(thetas[intersect(seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0], which(is.na(unlist(fixedParams))))])
   }
   return(list(u, thetasprime))
 }
