@@ -432,8 +432,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
         )
         logHR <- newllk + newlogprior - oldllk - oldlogprior
+        acceptProb <- min(1, logHR)
 
-        if (log(runif(1)) < logHR) {
+        if (runif(1) < acceptProb) {
           # Accept new state sequence
           accSwitch[iter] <- 1
           switch <- newSwitch
@@ -447,7 +448,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
         #if (adapt & iter >= 1000 & iter <= adapt) {
         if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
-          rateS <- adapt_S(rateS, newRateParams[[1]], min(1, exp(logHR)), iter)
+          rateS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
         }
       }, silent = TRUE)
 
@@ -493,8 +494,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     newllk <- kalman$llk
     #mu <- as.vector(t(kalman$mu))
     logHR <- newllk + newlogprior - oldllk - oldlogprior
+    acceptProb <- min(1, exp(logHR))
 
-    if (log(runif(1)) < logHR) {
+    if (runif(1) < acceptProb) {
       # Accept new parameter values
       accParam[iter] <- 1
       param <- newParams[[2]]
@@ -513,7 +515,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         } else if (length(inits$sigma) == 3 * nbStates) {
           paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (1:3) + (2 * nbStates) + (3 * (i - 1)))
         }
-        S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], min(1, exp(logHR)), iter)
+        S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
         muindex <- c(i * 2 - 1, i * 2)
         if (any(is.na(unlist(fixMu)[muindex])))
           S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], min(1, exp(logHR)), iter)
@@ -586,8 +588,10 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
     param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]]))
   }
 
-  u <- rnorm(length(param))
-  thetas <- param + as.vector(S %*% u)
+  #u <- rnorm(length(param))
+  #thetas <- param + as.vector(S %*% u)
+  u <- as.vector(S %*% runif(length(param), -1, 1))
+  thetas <- param + u
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
@@ -606,8 +610,10 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
 }
 
 proposeRates <- function(param, fixedParams, S) {
-  u <- rnorm(length(param))
-  thetas <- log(param) + as.vector(S %*% u)
+  #u <- rnorm(length(param))
+  #thetas <- log(param) + as.vector(S %*% u)
+  u <- as.vector(S %*% runif(length(param), -1, 1))
+  thetas <- param + u
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
@@ -619,8 +625,10 @@ proposeRates <- function(param, fixedParams, S) {
 }
 
 proposeMus <- function(param, fixedParams, S) {
-  u <- rnorm(length(param))
-  thetas <- param + as.vector(S %*% u)
+  #u <- rnorm(length(param))
+  #thetas <- param + as.vector(S %*% u)
+  u <- as.vector(S %*% runif(length(param), -1, 1))
+  thetas <- param + u
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
