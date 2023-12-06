@@ -432,7 +432,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
         )
         logHR <- newllk + newlogprior - oldllk - oldlogprior
-        acceptProb <- min(1, logHR)
+        acceptProb <- min(1, exp(logHR), na.rm = TRUE)
 
         if (runif(1) < acceptProb) {
           # Accept new state sequence
@@ -494,7 +494,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     newllk <- kalman$llk
     #mu <- as.vector(t(kalman$mu))
     logHR <- newllk + newlogprior - oldllk - oldlogprior
-    acceptProb <- min(1, exp(logHR))
+    acceptProb <- min(1, exp(logHR), na.rm = TRUE)
 
     if (runif(1) < acceptProb) {
       # Accept new parameter values
