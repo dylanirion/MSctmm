@@ -478,6 +478,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       #ensure none NA
       while (any(is.na(newParams[[2]]))) {
         newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
+        print("NA")
+        print(param)
+        print(S[1:length(param), 1:length(param)])
       }
 
       # hack to ensure tau_pos >= tau_vel (limits models we can test)
