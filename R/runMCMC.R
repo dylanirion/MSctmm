@@ -321,7 +321,6 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   # initialise Hmat (rows of 0s for transitions)
   HmatAll <- matrix(0, nrow(data.mat), 4)
   HmatAll[which(!is.na(data.mat[ , "x"])), ] <- Hmat
-
   # initial likelihood
   oldllk <- kalman_rcpp(data = data.mat, nbStates = nbStates, param = param, fixmu = mu, Hmat = HmatAll)$llk
 
@@ -432,7 +431,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           newRateParams[[2]], ratePriorMean, ratePriorSD, kappa, model
         )
         logHR <- newllk + newlogprior - oldllk - oldlogprior
-        acceptProb <- min(1, exp(logHR), na.rm = TRUE)
+        acceptProb <- min(1, ifelse(is.na(exp(logHR)),0 , exp(logHR)))
 
         if (runif(1) < acceptProb) {
           # Accept new state sequence
@@ -476,7 +475,12 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       newMu <- proposeMus(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
       # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
 
-      # hack to ensure tau_pos >= tau_vel (does actually limit models we can test)
+      #ensure none NA
+      while (any(is.na(newParams[[2]]))) {
+        newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
+      }
+
+      # hack to ensure tau_pos >= tau_vel (limits models we can test)
       # is there potential to get stuck here?
       if (all(newParams[[2]][1:nbStates] >= newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
         pass <- T
@@ -494,7 +498,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     newllk <- kalman$llk
     #mu <- as.vector(t(kalman$mu))
     logHR <- newllk + newlogprior - oldllk - oldlogprior
-    acceptProb <- min(1, exp(logHR), na.rm = TRUE)
+    acceptProb <- min(1, ifelse(is.na(exp(logHR)),0 , exp(logHR)))
 
     if (runif(1) < acceptProb) {
       # Accept new parameter values
