@@ -469,19 +469,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
     pass = F
     while (!pass) {  # ensure tau_p >= tau_v
-
       # On working scale [-Inf,Inf]
       newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
       newMu <- proposeMus(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
       # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-
-      #ensure none NA
-      while (any(is.na(newParams[[2]]))) {
-        newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
-        print("NA")
-        print(param)
-        print(S[1:length(param), 1:length(param)])
-      }
 
       # hack to ensure tau_pos >= tau_vel (limits models we can test)
       # is there potential to get stuck here?
@@ -523,6 +514,16 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (1:3) + (2 * nbStates) + (3 * (i - 1)))
         }
         if (any(is.na(unlist(fixPar)[paramindex]))) {
+
+          #DEBUG
+          if (any(is.na(adapt_S(S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)))) {
+            print(paste0("GOT NA iteration: ", iter, ", acceptProb: ", acceptProb, ", state: ", i))
+            print(newParams[[1]])
+            print(S[1:length(param), 1:length(param)])
+            stop()
+          }
+          #/DEBUG
+
           S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
         }
         muindex <- c(i * 2 - 1, i * 2)
