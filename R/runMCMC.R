@@ -448,7 +448,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         #if (adapt & iter >= 1000 & iter <= adapt) {
         if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
           newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
-          newS[is.na(newS)] <- S[is.na(newS)]
+          newS[is.na(newS)] <- rateS[is.na(newS)]
           rateS <- newS
         }
       }, silent = TRUE)
@@ -517,13 +517,13 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
         }
         if (any(is.na(unlist(fixPar)[paramindex]))) {
           newS <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
-          newS[is.na(newS)] <- S[is.na(newS)]
+          newS[is.na(newS)] <- S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])][is.na(newS)]
           S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- newS
         }
         muindex <- c(i * 2 - 1, i * 2)
         if (any(is.na(unlist(fixMu)[muindex])) & !is.infinite(unlist(fixPar)[i])) {
           newS <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
-          newS[is.na(newS)] <- S[is.na(newS)]
+          newS[is.na(newS)] <- S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])][is.na(newS)]
           S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- newS
         }
       }
