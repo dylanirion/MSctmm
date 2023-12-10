@@ -521,10 +521,11 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- newS
         }
         muindex <- c(i * 2 - 1, i * 2)
-        if (any(is.na(unlist(fixMu)[muindex])))
+        if (any(is.na(unlist(fixMu)[muindex])) & !is.infinite(unlist(fixPar)[i])) {
           newS <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
           newS[is.na(newS)] <- S[is.na(newS)]
-          S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
+          S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- newS
+        }
       }
     }
 
