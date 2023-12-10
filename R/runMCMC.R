@@ -447,7 +447,9 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 
         #if (adapt & iter >= 1000 & iter <= adapt) {
         if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
-          rateS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
+          newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
+          newS[is.na(newS)] <- S[is.na(newS)]
+          rateS <- newS
         }
       }, silent = TRUE)
 
@@ -514,20 +516,14 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (1:3) + (2 * nbStates) + (3 * (i - 1)))
         }
         if (any(is.na(unlist(fixPar)[paramindex]))) {
-
-          #DEBUG
-          if (any(is.na(adapt_S(S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)))) {
-            print(paste0("GOT NA iteration: ", iter, ", acceptProb: ", acceptProb, ", state: ", i))
-            print(newParams[[1]])
-            print(S[1:length(param), 1:length(param)])
-            stop()
-          }
-          #/DEBUG
-
-          S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
+          newS <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
+          newS[is.na(newS)] <- S[is.na(newS)]
+          S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- newS
         }
         muindex <- c(i * 2 - 1, i * 2)
         if (any(is.na(unlist(fixMu)[muindex])))
+          newS <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
+          newS[is.na(newS)] <- S[is.na(newS)]
           S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
       }
     }
