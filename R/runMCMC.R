@@ -445,8 +445,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
           HmatAll <- newHmatAll
         }
 
-        #if (adapt & iter >= 1000 & iter <= adapt) {
-        if (!is.na(model) & adapt & iter > 1 & iter <= adapt) {
+        if (!is.na(model) & adapt & iter <= adapt) {
           newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
           newS[is.na(newS)] <- rateS[is.na(newS)]
           rateS <- newS
@@ -505,27 +504,17 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       oldlogprior <- newlogprior
     }
 
-    #if (adapt & iter >= 1000 & iter <= adapt) {
     if (adapt & iter <= adapt) {
-      #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
-      # calculate S by state instead
-      for (i in 1:nbStates) {
-        if (length(inits$sigma) == nbStates) {
-          paramindex <- seq(i, length(param), by = nbStates)
-        } else if (length(inits$sigma) == 3 * nbStates) {
-          paramindex <- c(seq(i, length(param) - 3 * nbStates, by = nbStates), (1:3) + (2 * nbStates) + (3 * (i - 1)))
-        }
-        if (any(is.na(unlist(fixPar)[paramindex]))) {
-          newS <- adapt_S(S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])], newParams[[1]][paramindex][is.na(unlist(fixPar)[paramindex])], acceptProb, iter)
-          newS[is.na(newS)] <- S[paramindex,paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])][is.na(newS)]
-          S[paramindex, paramindex][is.na(unlist(fixPar)[paramindex]), is.na(unlist(fixPar)[paramindex])] <- newS
-        }
-        muindex <- c(i * 2 - 1, i * 2)
-        if (any(is.na(unlist(fixMu)[muindex])) & !is.infinite(unlist(fixPar)[i])) {
-          newS <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
-          newS[is.na(newS)] <- S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])][is.na(newS)]
-          S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- newS
-        }
+      if (any(is.na(unlist(fixPar)))) {
+        newS <- adapt_S(S[1:length(param), 1:length(param)][is.na(unlist(fixPar)), is.na(unlist(fixPar))], newParams[[1]][is.na(unlist(fixPar))], acceptProb, iter)
+        newS[is.na(newS)] <- S[1:length(param), 1:length(param)][is.na(unlist(fixPar)), is.na(unlist(fixPar))][is.na(newS)]
+        S[1:length(param), 1:length(param)][is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- newS
+      }
+      muindex <- unique(cumsum(rep(!is.infinite(fixPar$tau_pos), each = 2)))
+      if (any(is.na(unlist(fixMu)[muindex]))) {
+        newS <- adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
+        newS[is.na(newS)] <- S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])][is.na(newS)]
+        S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])] <- newS
       }
     }
 
@@ -595,10 +584,8 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
     param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]] <- suppressWarnings(log(param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0]]))
   }
 
-  #u <- rnorm(length(param))
-  #thetas <- param + as.vector(S %*% u)
-  u <- as.vector(S %*% rnorm(length(param)))
-  thetas <- param + u
+  u <- rnorm(length(param))
+  thetas <- param + as.vector(S %*% u)
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
@@ -617,10 +604,8 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
 }
 
 proposeRates <- function(param, fixedParams, S) {
-  #u <- rnorm(length(param))
-  #thetas <- log(param) + as.vector(S %*% u)
-  u <- as.vector(S %*% rnorm(length(param)))
-  thetas <- param + u
+  u <- rnorm(length(param))
+  thetas <- param + as.vector(S %*% u)
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
@@ -632,10 +617,8 @@ proposeRates <- function(param, fixedParams, S) {
 }
 
 proposeMus <- function(param, fixedParams, S) {
-  #u <- rnorm(length(param))
-  #thetas <- param + as.vector(S %*% u)
-  u <- as.vector(S %*% rnorm(length(param)))
-  thetas <- param + u
+  u <- rnorm(length(param))
+  thetas <- param + as.vector(S %*% u)
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
