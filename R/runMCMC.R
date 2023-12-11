@@ -506,7 +506,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     }
 
     #if (adapt & iter >= 1000 & iter <= adapt) {
-    if (adapt & iter > 1 & iter <= adapt) {
+    if (adapt & iter <= adapt) {
       #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
       # calculate S by state instead
       for (i in 1:nbStates) {
@@ -597,7 +597,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
 
   #u <- rnorm(length(param))
   #thetas <- param + as.vector(S %*% u)
-  u <- as.vector(S %*% runif(length(param), -1, 1))
+  u <- as.vector(S %*% rnorm(length(param)))
   thetas <- param + u
 
   if (all(is.na(fixedParams))) {
@@ -619,7 +619,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
 proposeRates <- function(param, fixedParams, S) {
   #u <- rnorm(length(param))
   #thetas <- log(param) + as.vector(S %*% u)
-  u <- as.vector(S %*% runif(length(param), -1, 1))
+  u <- as.vector(S %*% rnorm(length(param)))
   thetas <- param + u
 
   if (all(is.na(fixedParams))) {
@@ -634,7 +634,7 @@ proposeRates <- function(param, fixedParams, S) {
 proposeMus <- function(param, fixedParams, S) {
   #u <- rnorm(length(param))
   #thetas <- param + as.vector(S %*% u)
-  u <- as.vector(S %*% runif(length(param), -1, 1))
+  u <- as.vector(S %*% rnorm(length(param)))
   thetas <- param + u
 
   if (all(is.na(fixedParams))) {
