@@ -506,7 +506,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     }
 
     #if (adapt & iter >= 1000 & iter <= adapt) {
-    if (adapt & iter <= adapt) {
+    if (adapt & iter > 1 & iter <= adapt) {
       #S[is.na(unlist(fixPar)), is.na(unlist(fixPar))] <- adapt_S(S[is.na(unlist(fixPar)), is.na(unlist(fixPar))], param_u[is.na(unlist(fixPar))], min(1, exp(logHR)), iter)
       # calculate S by state instead
       for (i in 1:nbStates) {
