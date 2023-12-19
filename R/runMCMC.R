@@ -558,6 +558,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
   cat("\n")
   cat("Elapsed: ", pretty_dt(difftime(Sys.time(), t0, units = "secs")), sep = "")
   cat("\n")
+  if (adapt) {
+    cat(diag(S))
+    cat("\n")
+  }
 
   return(
     c(
