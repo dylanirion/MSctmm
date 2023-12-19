@@ -163,8 +163,11 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     stop("argument 'props$S' has the wrong dimensions, expected ", paste(c(nbParam * nbStates, nbParam * nbStates), collapse = ", "), " but got ", paste(dim(props$S), collapse = ", "))
   if (!is.na(model) & all(dim(props$S) != c(nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha), nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha))))
     stop("argument 'props$S' has the wrong dimensions, expected ", paste(c(nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha), nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)), collpase = ", "), " but got ", paste(dim(props$S), collapse = ", "))
-  if (updateState & "list" %in% class(props$updateLim) & all(sapply(props$updateLim, length) != rep(2, length(unique(track$ID)))))
-    stop("argument 'props$updateLim' has the wrong length, expected ", paste(rep(2, length(unique(track$ID))), collapse = " "), " but got ", paste(sapply(props$updateLim, length), collapse = " "))
+  if (updateState & "list" %in% class(props$updateLim)) {
+    if (!all(sapply(props$updateLim, length) == rep(2, length(unique(track$ID))))) {
+      stop("argument 'props$updateLim' has the wrong length, expected ", paste(rep(2, length(unique(track$ID))), collapse = " "), " but got ", paste(sapply(props$updateLim, length), collapse = " "))
+    }
+  }
   if (updateState & !"list" %in% class(props$updateLim) & length(props$updateLim) != 2)
     stop("argument 'props$updateLim' has the wrong length, expected ", 2, " but got ", length(props$updateLim))
   if (updateState & !is.null(props$updateProbs) & class(props$updateLim) != class(props$updateProbs))
@@ -590,6 +593,9 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
 
   u <- rnorm(length(param))
   thetas <- param + as.vector(S %*% u)
+  if (length(param) == 5 * nbStates) {
+    thetas[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]] <- param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]] + as.vector(exp(S[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0], seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]]) %*% u[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]])
+  }
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
