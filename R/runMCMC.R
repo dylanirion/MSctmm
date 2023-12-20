@@ -596,7 +596,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   }
   thetasprime <- unlist(fixedParams)
 
-  u <- as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% runif(length(logparam), -1, 1))
+  u <- as.vector(S[1:length(logparam), 1:length(logparam)] %*% runif(length(logparam), -1, 1))
   thetasprime[is.na(unlist(fixedParams))] <- exp(logparam[is.na(unlist(fixedParams))] + u[is.na(unlist(fixedParams))]) - adj[is.na(unlist(fixedParams))]
 
   return(list(u, thetasprime))
