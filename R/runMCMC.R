@@ -789,6 +789,12 @@ runMCMC <- function(track,
       }
     }
 
+    muindex <-
+      unique(cumsum(rep(
+        !is.infinite(fixPar$tau_pos),
+        each = 2
+      )))
+
     if (any(is.na(unlist(fixMu)[muindex]))) {
       newMu <-
         proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
@@ -853,11 +859,7 @@ runMCMC <- function(track,
         S[seq_along(param), seq_along(param)][is.na(unlist(fixPar)), is.na(unlist(fixPar))] <-
           newS
       }
-      muindex <-
-        unique(cumsum(rep(
-          !is.infinite(fixPar$tau_pos),
-          each = 2
-        )))
+
       if (any(is.na(unlist(fixMu)[muindex]))) {
         newS <-
           adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
