@@ -516,25 +516,21 @@ runMCMC <- function(track,
     # colnames(obs[[id]]) <- c("x", "y", "time", "ID",  "state")
     indSwitch <-
       which(obs[[id]][-1, "state"] != obs[[id]][-nbObs, "state"]) + 1
-    switch[[id]
-    ] <- cbind(
+    switch[[id]] <- cbind(
       "time" = obs[[id]][indSwitch, "time"] - 0.001,
       "state" = rle(obs[[id]][, "state"])$values[-1]
     )
     # colnames(switch[[id]]) <- c("time", "state")
 
-    if (!all(is.na(switch[[id]
-    ]))) {
+    if (!all(is.na(switch[[id]]))) {
       data.list[[id]] <- rbind(
         obs[[id]][, c("x", "y", "time", "ID", "state", "group")],
         cbind(
           "x" = NA,
           "y" = NA,
-          "time" = switch[[id]
-          ][, "time"],
+          "time" = switch[[id]][, "time"],
           "ID" = id,
-          "state" = switch[[id]
-          ][, "state"],
+          "state" = switch[[id]][, "state"],
           "group" = ifelse("group" %in% colnames(track), track[which(track$ID == id), "group"], 1)
         )
       )
