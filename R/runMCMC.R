@@ -798,7 +798,7 @@ runMCMC <- function(track,
         c(1:(2 * nbStates), seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0])
     }
 
-    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))]) <= 0) {
+    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0)) {
       acceptProb <- 0
     } else {
       # Calculate acceptance ratio
