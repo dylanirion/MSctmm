@@ -482,7 +482,7 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
       }
     }
 
-    newMu <- proposeMu(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+    newMu <- proposeMus(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
     # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
 
 
