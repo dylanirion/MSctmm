@@ -676,8 +676,7 @@ runMCMC <- function(track,
                 obs = obs[[id]],
                 nbStates = nbStates,
                 knownStates = known[[id]],
-                switch = switch[[id]
-                ],
+                switch = switch[[id]],
                 updateLim = updateLim[[id]],
                 param = param,
                 mu = unlist(mu),
@@ -761,8 +760,7 @@ runMCMC <- function(track,
           updateQ(
             nbStates = nbStates,
             data = data.list[[id]],
-            switch = switch[[id]
-            ],
+            switch = switch[[id]],
             priorShape = priorShape,
             priorRate = priorRate,
             priorCon = priorCon
@@ -789,17 +787,9 @@ runMCMC <- function(track,
       }
     }
 
-    muindex <-
-      unique(cumsum(rep(
-        !is.infinite(fixPar$tau_pos),
-        each = 2
-      )))
-
-    if (any(is.na(unlist(fixMu)[muindex]))) {
-      newMu <-
-        proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
-      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-    }
+    newMu <-
+      proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+    # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
 
     if (length(param) == 3 * nbStates) {
       positiveConstraintIndexes <- seq_along(param)
@@ -860,6 +850,12 @@ runMCMC <- function(track,
           newS
       }
 
+
+      muindex <-
+        unique(cumsum(rep(
+          !is.infinite(fixPar$tau_pos),
+          each = 2
+        )))
       if (any(is.na(unlist(fixMu)[muindex]))) {
         newS <-
           adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
