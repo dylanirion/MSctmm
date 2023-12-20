@@ -475,15 +475,16 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
     while (!pass) {  # ensure tau_p >= tau_v
       # On working scale [-Inf,Inf]
       newParams <- proposeParams(param, fixPar, S[1:length(param), 1:length(param)], nbStates)
-      newMu <- proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
-      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-
       # hack to ensure tau_pos >= tau_vel (limits models we can test)
       # is there potential to get stuck here?
       if (all(newParams[[2]][1:nbStates] >= newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
         pass <- T
       }
     }
+
+    newMu <- proposeMu(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+    # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
+
 
     # Calculate acceptance ratio
     data.mat <- do.call("rbind", data.list)
@@ -584,9 +585,10 @@ runMCMC <- function(track, nbStates, nbIter, inits, fixed, priors,
 }
 
 proposeParams <- function(param, fixedParams, S, nbStates) {
-  adj <- as.numeric(param < 0)
-  adj[which(adj == 1)] <- adj[which(adj == 1)] + abs(param[which(adj == 1)])
-
+  adj <- rep(0, length(param))
+  if (length(param) == 5 * nbStates) {
+  adj[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]] <- 1 + abs(param[seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 == 0]])
+  }
   logparam <- suppressWarnings(log(param + adj))
 
   if (all(is.na(fixedParams))) {
@@ -594,22 +596,36 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   }
   thetasprime <- unlist(fixedParams)
 
-  u <- rnorm(length(logparam))
-  thetasprime[is.na(unlist(fixedParams))] <- exp(logparam[is.na(unlist(fixedParams))] + as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% u[is.na(unlist(fixedParams))])) - adj[is.na(unlist(fixedParams))]
+  u <- as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% runif(length(logparam), -1, 1))
+  thetasprime[is.na(unlist(fixedParams))] <- exp(logparam[is.na(unlist(fixedParams))] + u[is.na(unlist(fixedParams))]) - adj[is.na(unlist(fixedParams))]
+
+  return(list(u, thetasprime))
+}
+
+proposeMus <- function(param, fixedParams, S, nbStates) {
+  u <- rnorm(length(param))
+  if (all(is.na(fixedParams))) {
+    fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
+  }
+  thetasprime <- unlist(fixedParams)
+
+  u <- rnorm(length(param))
+  thetasprime[is.na(unlist(fixedParams))] <- param[is.na(unlist(fixedParams))] + as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% u[is.na(unlist(fixedParams))])
 
   return(list(u, thetasprime))
 }
 
 proposeRates <- function(param, fixedParams, S) {
-  u <- rnorm(length(param))
-  thetas <- param + as.vector(S %*% u)
+  logparam <- suppressWarnings(log(param + adj))
+  u <- rnorm(length(logparam))
 
   if (all(is.na(fixedParams))) {
     fixedParams <- sapply(param, function(x) {rep(NA, length(x))})
   }
 
   thetasprime <- unlist(fixedParams)
-  thetasprime[is.na(unlist(fixedParams))] <- exp(thetas[is.na(unlist(fixedParams))])
+  thetasprime[is.na(unlist(fixedParams))] <- exp(logparam[is.na(unlist(fixedParams))] + as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% u[is.na(unlist(fixedParams))]))
+
   return(list(u, thetasprime))
 }
 
