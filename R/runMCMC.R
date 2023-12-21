@@ -149,7 +149,7 @@ runMCMC <- function(track,
       length(inits$state)
     )
   }
-  if (is.null(inits$Q) &&
+  if (updateState && is.null(inits$Q) &&
     (
       is.null(fixed$kappa) ||
         is.null(inits$alpha) || is.null(inits$t_alpha) || is.na(model)
@@ -419,7 +419,11 @@ runMCMC <- function(track,
 
   # check if rate matrix provided
   # TODO just check model here?
-  if (!is.null(inits$Q) &&
+  if (!updateState) {
+    ratePriorMean <- NULL
+    ratePriorSD <- NULL
+    rateparam <- NULL
+  } else if (!is.null(inits$Q) &&
     length(inits$Q) == length(unique(track$ID)) &&
     "list" %in% class(inits$Q)) {
     Q <- inits$Q
@@ -770,8 +774,9 @@ runMCMC <- function(track,
     ## 2. Update movement parameters ##
     ###################################
 
+    bailOut <- 0
     pass <- F
-    while (!pass) {
+    while (!pass && bailOut <= 100) {
       # ensure tau_p >= tau_v
       # On working scale [-Inf,Inf]
       newParams <-
@@ -781,6 +786,7 @@ runMCMC <- function(track,
       if (all(newParams[[2]][1:nbStates] >= newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
         pass <- T
       }
+      bailOut <- bailOut + 1
     }
 
     newMu <-
@@ -794,7 +800,7 @@ runMCMC <- function(track,
         c(1:(2 * nbStates), seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0])
     }
 
-    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0)) {
+    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0) || bailOut == 100) {
       acceptProb <- 0
     } else {
       # Calculate acceptance ratio

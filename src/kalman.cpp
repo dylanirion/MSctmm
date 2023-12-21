@@ -71,8 +71,8 @@ List kalman_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixm
       sigma.slice(i)(1,1) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
     } else if (param.size() / nbStates == 5) {
       sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
-      sigma.slice(i)(0,1) = param(2 * nbStates + (3 * i + 1));
-      sigma.slice(i)(1,0) = param(2 * nbStates + (3 * i + 1));
+      sigma.slice(i)(0,1) = param((2 * nbStates) - 1 + (3 * (i + 1)));
+      sigma.slice(i)(1,0) = param((2 * nbStates) - 1 + (3 * (i + 1)));
     }
   }
 
