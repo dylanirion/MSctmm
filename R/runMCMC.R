@@ -955,7 +955,7 @@ proposeParams <- function(param, fixedParams, S, nbStates) {
   }
   thetasprime <- unlist(fixedParams)
 
-  u <- runif(length(param))
+  u <- rnorm(length(param))
   thetasprime[is.na(unlist(fixedParams))] <-
     param[is.na(unlist(fixedParams))] + as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% u[is.na(unlist(fixedParams))])
 
