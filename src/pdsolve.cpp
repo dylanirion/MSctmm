@@ -26,15 +26,15 @@ mat PDsolve(mat M, bool sym=true, bool force=false, bool pseudo=false, double to
   if(ANYINF || ANYZERO){
     // 1/Inf == 0 # correlations not accounted for
     if(ANYINF){
-      M.each_row(find_nonfinite(M.diag())) = zeros(DIM(1));
-      M.each_col(find_nonfinite(M.diag())) = zeros(DIM(0));
+      M.each_row(find_nonfinite(M.diag())) = zeros(1, DIM(1));
+      M.each_col(find_nonfinite(M.diag())) = zeros(DIM(0), 1);
     }
 
     // 1/0 == Inf
     if(ANYZERO){
       uvec i = find(M.diag() <= 0);
-      M.each_row(i) = zeros(DIM(1));
-      M.each_col(i) = zeros(DIM(0));
+      M.each_row(i) = zeros(1, DIM(1));
+      M.each_col(i) = zeros(DIM(0), 1);
       for(uword j = 0; j < i.n_elem; j++){
         M(i(j), i(j)) = datum::inf;
       }
