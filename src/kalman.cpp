@@ -137,7 +137,8 @@ List kalman_rcpp( arma::mat& data, int nbStates, arma::vec param, arma::vec fixm
       mat ZPestZt = Z * PestZt;
       ZPestZt = ZPestZt.replace(datum::nan, 0);
       mat F = ZPestZt + H;                                //residual covariance (sRes, Sk)
-      iF.slice(i) = F.i();
+      //iF.slice(i) = F.i();
+      iF.slice(i) = PDsolve(F);
       logdetF(i) = det(F) > 0 ? log(std::abs(det(F))) : datum::inf;
       uiF.slice(i) = iF.slice(i) * u.slice(i).submat(0, 1, 1, 2);
       uiF.slice(i) = uiF.slice(i).replace(datum::nan, 0);
