@@ -75,6 +75,7 @@
 runMCMC <- function(track,
                     nbStates,
                     nbIter,
+                    burnin,
                     inits,
                     fixed,
                     priors,
@@ -104,8 +105,8 @@ runMCMC <- function(track,
 
   # Check inits arguments and lengths
   if (is.null(inits$tau_pos) ||
-    is.null(inits$tau_vel) ||
-    is.null(inits$sigma) || is.null(inits$mu) || is.null(inits$state)) {
+      is.null(inits$tau_vel) ||
+      is.null(inits$sigma) || is.null(inits$mu) || is.null(inits$state)) {
     stop("argument 'inits' missing: ", paste(c(
       "tau_pos", "tau_vel", "sigma", "mu", "state"
     )[which(sapply(inits[c("tau_pos", "tau_vel", "sigma", "mu", "state")], is.null))], collapse = ", "))
@@ -123,7 +124,7 @@ runMCMC <- function(track,
     }
   }
   if (length(inits$sigma) != nbStates &&
-    length(inits$sigma) != 3 * nbStates) {
+      length(inits$sigma) != 3 * nbStates) {
     stop(
       "argument 'inits$sigma has the wrong length, expected ",
       nbStates,
@@ -150,10 +151,10 @@ runMCMC <- function(track,
     )
   }
   if (updateState && is.null(inits$Q) &&
-    (
-      is.null(fixed$kappa) ||
+      (
+        is.null(fixed$kappa) ||
         is.null(inits$alpha) || is.null(inits$t_alpha) || is.na(model)
-    )) {
+      )) {
     stop(
       "argument 'inits$Q' is null, expected ",
       paste(
@@ -237,7 +238,7 @@ runMCMC <- function(track,
       )
     }
     if (!is.na(model) &&
-      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)) {
+        length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)) {
       stop(
         "argument 'priors$",
         arg,
@@ -249,8 +250,8 @@ runMCMC <- function(track,
     }
   }
   if (is.na(model) &&
-    (is.null(priors$shape) ||
-      is.null(priors$rate) || is.null(priors$con))) {
+      (is.null(priors$shape) ||
+       is.null(priors$rate) || is.null(priors$con))) {
     stop(
       "argument 'model' is NA, but argument 'priors' missing: ",
       paste(c("shape", "rate", "con")[which(sapply(priors[c("shape", "rate", "con")], is.null))], collapse = ", ")
@@ -274,10 +275,10 @@ runMCMC <- function(track,
   # Check props arguments and lengths
   if (is.null(props$S) || (updateState && is.null(props$updateLim))) {
     stop("argument 'props' missing: ", paste(c("S")[which(is.null(props$S))], c("S")[which(updateState &
-      is.null(props$S))], collapse = ", "))
+                                                                                             is.null(props$S))], collapse = ", "))
   }
   if (is.na(model) &&
-    all(dim(props$S) != c(nbParam * nbStates, nbParam * nbStates))) {
+      all(dim(props$S) != c(nbParam * nbStates, nbParam * nbStates))) {
     stop(
       "argument 'props$S' has the wrong dimensions, expected ",
       paste(c(nbParam * nbStates, nbParam * nbStates), collapse = ", "),
@@ -286,12 +287,12 @@ runMCMC <- function(track,
     )
   }
   if (!is.na(model) &&
-    all(
-      dim(props$S) != c(
-        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
-        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)
-      )
-    )) {
+      all(
+        dim(props$S) != c(
+          nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
+          nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)
+        )
+      )) {
     stop(
       "argument 'props$S' has the wrong dimensions, expected ",
       paste(
@@ -318,7 +319,7 @@ runMCMC <- function(track,
     }
   }
   if (updateState &&
-    !"list" %in% class(props$updateLim) && length(props$updateLim) != 2) {
+      !"list" %in% class(props$updateLim) && length(props$updateLim) != 2) {
     stop(
       "argument 'props$updateLim' has the wrong length, expected ",
       2,
@@ -327,8 +328,8 @@ runMCMC <- function(track,
     )
   }
   if (updateState &&
-    !is.null(props$updateProbs) &&
-    class(props$updateLim) != class(props$updateProbs)) {
+      !is.null(props$updateProbs) &&
+      class(props$updateLim) != class(props$updateProbs)) {
     stop(
       "argument 'props$updateProbs' provided but of wrong type, expected ",
       class(props$updateLim),
@@ -337,9 +338,9 @@ runMCMC <- function(track,
     )
   }
   if (updateState &&
-    !is.null(props$updateProbs) &&
-    "list" %in% class(props$updateProbs) &&
-    all(sapply(props$updateLim, length) != sapply(props$updateProbs, length))) {
+      !is.null(props$updateProbs) &&
+      "list" %in% class(props$updateProbs) &&
+      all(sapply(props$updateLim, length) != sapply(props$updateProbs, length))) {
     stop(
       "argument 'props$updateProbs' has the wrong length, expected ",
       paste(sapply(props$updateLim, length), collapse = " "),
@@ -348,9 +349,9 @@ runMCMC <- function(track,
     )
   }
   if (updateState &&
-    !is.null(props$updateProbs) &&
-    !"list" %in% class(props$updateProbs) &&
-    length(props$updateProbs) != 2) {
+      !is.null(props$updateProbs) &&
+      !"list" %in% class(props$updateProbs) &&
+      length(props$updateProbs) != 2) {
     stop(
       "argument 'props$updateProbs' has the wrong length, expected ",
       2,
@@ -369,8 +370,8 @@ runMCMC <- function(track,
     warning("argument 'model' is not NA, ignoring 'inits$Q'")
   }
   if (!is.na(model) &&
-    (!is.null(priors$shape) ||
-      !is.null(priors$rate) || !is.null(priors$con))) {
+      (!is.null(priors$shape) ||
+       !is.null(priors$rate) || !is.null(priors$con))) {
     warning(
       "argument 'model' is not NA, ignoring ",
       paste(c(
@@ -379,7 +380,7 @@ runMCMC <- function(track,
     )
   }
   if (is.na(model) &&
-    all(dim(props$S) > c(nbParam * nbStates, nbParam * nbStates))) {
+      all(dim(props$S) > c(nbParam * nbStates, nbParam * nbStates))) {
     warning("argument 'model' is NA, ignoring extra dimensions of 'props$S")
   }
 
@@ -424,8 +425,8 @@ runMCMC <- function(track,
     ratePriorSD <- NULL
     rateparam <- NULL
   } else if (!is.null(inits$Q) &&
-    length(inits$Q) == length(unique(track$ID)) &&
-    "list" %in% class(inits$Q)) {
+             length(inits$Q) == length(unique(track$ID)) &&
+             "list" %in% class(inits$Q)) {
     Q <- inits$Q
     names(Q) <- unique(track$ID)
     kappa <- fixed$kappa
@@ -449,7 +450,7 @@ runMCMC <- function(track,
   S <- props$S[1:(nbParam * nbStates), 1:(nbParam * nbStates)]
   # TODO: CLEAN THIS UP?
   if ("list" %in% class(props$updateLim) &&
-    length(props$updateLim) == length(unique(track$ID))) {
+      length(props$updateLim) == length(unique(track$ID))) {
     updateLim <- lapply(seq_along(unique(track$ID)), function(i) {
       lim <-
         ceiling(props$updateLim[[i]] * nrow(track[which(track$ID == unique(track$ID)[i]), ]))
@@ -475,8 +476,8 @@ runMCMC <- function(track,
     })
   }
   if (!is.null(props$updateProbs) &&
-    "list" %in% class(props$updateProbs) &&
-    length(props$updateProbs) == length(unique(track$ID))) {
+      "list" %in% class(props$updateProbs) &&
+      length(props$updateProbs) == length(unique(track$ID))) {
     updateProbs <- props$updateProbs
     # } else {
     #  updateProbs <- rep(list(props$updateProbs), length(unique(track$ID)))
@@ -583,18 +584,19 @@ runMCMC <- function(track,
   ## Loop over MCMC iterations ##
   ###############################
 
-  allParam <- matrix(NA, nrow = nbIter, ncol = nbParam * nbStates)
+  allParam <- matrix(NA, nrow = nbIter - burnin, ncol = nbParam * nbStates)
+  row.names(allParam) <- (burnin + 1):nbIter
   colnames(allParam) <- c(
     paste("tau_pos[", 1:nbStates, "]", sep = ""),
     paste("tau_vel[", 1:nbStates, "]", sep = ""),
     switch((nbParam == 7) + 1,
-      paste("sigma[", 1:nbStates, "]", sep = ""),
-      paste(
-        c("sigma_x[", "sigma_y[", "sigma_xy["),
-        rep(1:nbStates, each = 3),
-        rep("]", nbStates * 3),
-        sep = ""
-      )
+           paste("sigma[", 1:nbStates, "]", sep = ""),
+           paste(
+             c("sigma_x[", "sigma_y[", "sigma_xy["),
+             rep(1:nbStates, each = 3),
+             rep("]", nbStates * 3),
+             sep = ""
+           )
     ),
     paste(
       c("mu_x[", "mu_y["),
@@ -603,24 +605,31 @@ runMCMC <- function(track,
       sep = ""
     )
   )
-  allLLk <- rep(NA, nbIter)
+  allLLk <- rep(NA, nbIter - burnin)
+  names(allLLk) <- (burnin + 1):nbIter
+  # accParam <- rep(0, nbIter - burnin)
+  accParam <- 0
 
-  accParam <- rep(0, nbIter)
   if (updateState) {
+    idx <- seq(0, nbIter, thinStates)[which(seq(0, nbIter, thinStates) > burnin)]
     allStates <-
-      matrix(NA, nrow = nbIter / thinStates, ncol = nrow(track)) # uses a lot of memory if not thinning!
-    allLen <- matrix(NA, nrow = nbIter, ncol = length(ids))
-    accSwitch <- rep(0, nbIter)
+      matrix(NA, nrow = length(idx), ncol = nrow(track)) # uses a lot of memory if not thinning!
+    row.names(allStates) <- idx
+    rm(idx)
+    #allLen <- matrix(NA, nrow = nbIter - burnin, ncol = length(ids))
+    #accSwitch <- rep(0, nbIter - burnin)
+    accSwitch <- 0
     if (!is.null(Q)) {
       allRates <-
-        array(NA, dim = c(nbIter, nbStates * (nbStates - 1), length(ids)))
+        array(
+          NA,
+          dim = c(nbIter - burnin, nbStates * (nbStates - 1), length(ids)),
+          dimnames = list((burnin + 1):nbIter, NULL, NULL))
     } else {
-      allRateParam <- matrix(NA, nrow = nbIter, ncol = length(rateparam))
+      allRateParam <- matrix(NA, nrow = nbIter - burnin, ncol = length(rateparam))
+      row.names(allRateParam) <- (burnin + 1):nbIter
     }
   }
-
-
-  timing <- matrix(NA, nrow = nbIter / thinStates, ncol = 2)
 
   t0 <- Sys.time()
   for (iter in 1:nbIter) {
@@ -638,11 +647,11 @@ runMCMC <- function(track,
         " remaining (est)",
         ifelse(
           exists("accSwitch"),
-          paste0(" -- accSwitch = ", round(sum(accSwitch) / iter * 100), "%"),
+          paste0(" -- accSwitch = ", round(accSwitch / iter * 100), "%"),
           ""
         ),
         " -- accParam = ",
-        round(sum(accParam) / iter * 100),
+        round(accParam / iter * 100),
         "%",
         sep = ""
       )
@@ -667,88 +676,81 @@ runMCMC <- function(track,
         acceptProb <- 0
       } else {
         acceptProb <- 0
-        try(
-          {
-            # catch autoreject error
-            for (id in ids) {
-              # TODO: FOR GHOST TOWN, WE NEED ALL DATA, NOT JUST OBS
-              upState <- updateState(
-                obs = obs[[id]],
-                nbStates = nbStates,
-                knownStates = known[[id]],
-                switch = switch[[id]],
-                updateLim = updateLim[[id]],
-                param = param,
-                mu = unlist(mu),
-                Hmat = HmatAll[which(data.mat[, "ID"] == id), ],
-                updateProbs = updateProbs[[id]],
-                Q = switch(is.null(Q) + 1,
-                  Q[[id]],
-                  NULL
-                ),
-                # https://www.r-bloggers.com/2017/02/use-switch-instead-of-ifelse-to-return-a-null/
-                rateparam = newRateParams[[2]],
-                kappa = kappa,
-                model = model
-              )
+        # catch autoreject "error"
+        upState <- lapply(ids, function(id) try(updateState(
+          obs = obs[[id]],
+          nbStates = nbStates,
+          knownStates = known[[id]],
+          switch = switch[[id]],
+          updateLim = updateLim[[id]],
+          param = param,
+          mu = unlist(mu),
+          Hmat = HmatAll[which(data.mat[, "ID"] == id), ],
+          updateProbs = updateProbs[[id]],
+          Q = switch(is.null(Q) + 1,
+                     Q[[id]],
+                     NULL
+          ),
+          # https://www.r-bloggers.com/2017/02/use-switch-instead-of-ifelse-to-return-a-null/
+          rateparam = newRateParams[[2]],
+          kappa = kappa,
+          model = model
+        ), TRUE))
+        if (all(sapply(upState, function(x) !inherits(x, "try-error")))) {
 
-              newData.list[[id]] <- upState$newData
-              newSwitch[[id]] <- upState$newSwitch
-              allLen[iter, which(ids == id)] <- upState$len
-            }
+          newData.list <- lapply(ids, function(id) upState[[id]]$newData)
+          newSwitch <- lapply(ids, function(id) upState[[id]]$newSwitch)
 
-            # flatten data
-            newData.mat <- do.call("rbind", newData.list)
+          # flatten data
+          newData.mat <- do.call("rbind", newData.list)
 
-            # update Hmat (rows of 0s for transitions)
-            newHmatAll <- matrix(0, nrow(newData.mat), 4)
-            newHmatAll[which(!is.na(newData.mat[, "x"])), ] <- Hmat
+          # update Hmat (rows of 0s for transitions)
+          newHmatAll <- matrix(0, nrow(newData.mat), 4)
+          newHmatAll[which(!is.na(newData.mat[, "x"])), ] <- Hmat
 
-            # Calculate acceptance ratio
-            newllk <-
-              kalman_rcpp(
-                data = newData.mat,
-                nbStates = nbStates,
-                param = param,
-                fixmu = unlist(mu),
-                Hmat = newHmatAll
-              )$llk
-            newlogprior <- getLogPrior(
-              param,
-              mu,
-              fixPar,
-              fixMu,
-              priorMean,
-              priorSD,
-              newRateParams[[2]],
-              ratePriorMean,
-              ratePriorSD,
-              kappa,
-              model
-            )
-            logHR <- newllk + newlogprior - oldllk - oldlogprior
-            acceptProb <-
-              min(1, ifelse(is.na(exp(logHR)), 0, exp(logHR)))
+          # Calculate acceptance ratio
+          newllk <-
+            kalman_rcpp(
+              data = newData.mat,
+              nbStates = nbStates,
+              param = param,
+              fixmu = unlist(mu),
+              Hmat = newHmatAll
+            )$llk
+          newlogprior <- getLogPrior(
+            param,
+            mu,
+            fixPar,
+            fixMu,
+            priorMean,
+            priorSD,
+            newRateParams[[2]],
+            ratePriorMean,
+            ratePriorSD,
+            kappa,
+            model
+          )
+          logHR <- newllk + newlogprior - oldllk - oldlogprior
+          acceptProb <-
+            min(1, ifelse(is.na(exp(logHR)), 0, exp(logHR)))
 
-            if (runif(1) < acceptProb) {
-              # Accept new state sequence
-              accSwitch[iter] <- 1
-              switch <- newSwitch
-              data.list <- newData.list
-              obs <-
-                lapply(data.list, function(data) {
-                  data[!is.na(data[, "x"]), ]
-                })
-              oldllk <- newllk
-              rateparam <- newRateParams[[2]]
-              oldlogprior <- newlogprior
-              HmatAll <- newHmatAll
-            }
-          },
-          silent = TRUE
-        )
+          if (runif(1) < acceptProb) {
+            # Accept new state sequence
+            #accSwitch[iter] <- 1
+            accSwitch <- accSwitch + 1
+            switch <- newSwitch
+            data.list <- newData.list
+            obs <-
+              lapply(data.list, function(data) {
+                data[!is.na(data[, "x"]), ]
+              })
+            oldllk <- newllk
+            rateparam <- newRateParams[[2]]
+            oldlogprior <- newlogprior
+            HmatAll <- newHmatAll
+          }
+        }
       }
-
       if (!is.na(model) && adapt && iter <= adapt) {
         newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
         newS[is.na(newS)] <- rateS[is.na(newS)]
@@ -835,13 +837,15 @@ runMCMC <- function(track,
 
     if (runif(1) < acceptProb) {
       # Accept new parameter values
-      accParam[iter] <- 1
+      #accParam[iter] <- 1
+      accParam <- accParam + 1
       param <- newParams[[2]]
       mu <- newMu[[2]]
       oldllk <- newllk
       oldlogprior <- newlogprior
     }
 
+    # TODO: adapt and burnin redundant?
     if (adapt && iter <= adapt) {
       if (any(is.na(unlist(fixPar)))) {
         newS <-
@@ -871,31 +875,32 @@ runMCMC <- function(track,
     #########################
     ## Save posterior draw ##
     #########################
-    allParam[iter, ] <-
-      cbind(matrix(param, ncol = length(param)), matrix(mu, ncol = 2 * nbStates))
-    if (updateState && !is.null(Q)) {
-      allRates[iter, , ] <-
-        matrix(
-          unlist(lapply(Q, function(q) {
-            q[!diag(nbStates)]
-          })),
-          ncol = length(ids),
-          nrow = nbStates * (nbStates - 1)
-        )
-    } else if (updateState) {
-      allRateParam[iter, ] <- rateparam
-    }
-
-    if (iter %% thinStates == 0) {
-      if (updateState) {
-        allStates[iter / thinStates, ] <-
-          unlist(lapply(obs, function(ob) {
-            ob[, "state"]
-          }))
+    if (iter > burnin) {
+      allParam[as.character(iter), ] <-
+        cbind(matrix(param, ncol = length(param)), matrix(mu, ncol = 2 * nbStates))
+      if (updateState && !is.null(Q)) {
+        allRates[as.character(iter), , ] <-
+          matrix(
+            unlist(lapply(Q, function(q) {
+              q[!diag(nbStates)]
+            })),
+            ncol = length(ids),
+            nrow = nbStates * (nbStates - 1)
+          )
+      } else if (updateState) {
+        allRateParam[as.character(iter), ] <- rateparam
       }
-      timing[iter / thinStates, ] <- c(iter, Sys.time())
+
+      if (iter %% thinStates == 0) {
+        if (updateState) {
+          allStates[as.character(iter), ] <-
+            unlist(lapply(obs, function(ob) {
+              ob[, "state"]
+            }))
+        }
+      }
+      allLLk[as.character(iter)] <- oldllk
     }
-    allLLk[iter] <- oldllk
 
 
     #####################
@@ -934,15 +939,14 @@ runMCMC <- function(track,
       if (exists("allStates")) {
         list(allStates = allStates)
       },
-      if (exists("accSwitch")) {
-        list(accSwitch = accSwitch)
-      },
-      list(accParam = accParam),
-      if (exists("allLen")) {
-        list(allLen = allLen)
-      },
-      list(allLLk = allLLk),
-      list(timing = timing)
+      #if (exists("accSwitch")) {
+      #  list(accSwitch = accSwitch)
+      #},
+      #list(accParam = accParam),
+      #if (exists("allLen")) {
+      #  list(allLen = allLen)
+      #},
+      list(allLLk = allLLk)
     )
   )
 }
@@ -975,16 +979,16 @@ getLogPrior <- function(param,
                         model) {
   return(sum(
     dnorm(param[is.na(unlist(fixPar))],
-      priorMean[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
-      priorSD[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
-      log = TRUE
+          priorMean[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
+          priorSD[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
+          log = TRUE
     ),
     dnorm(mu[is.na(unlist(fixMu)) & !is.na(mu)],
-      priorMean[(length(unlist(fixPar)) + 1):length(priorMean)][is.na(unlist(fixMu)) &
-        !is.na(mu)],
-      priorSD[(length(unlist(fixPar)) + 1):length(priorSD)][is.na(unlist(fixMu)) &
-        !is.na(mu)],
-      log = TRUE
+          priorMean[(length(unlist(fixPar)) + 1):length(priorMean)][is.na(unlist(fixMu)) &
+                                                                      !is.na(mu)],
+          priorSD[(length(unlist(fixPar)) + 1):length(priorSD)][is.na(unlist(fixMu)) &
+                                                                  !is.na(mu)],
+          log = TRUE
     ),
     ifelse(
       !is.na(model),
@@ -998,12 +1002,12 @@ getLogPrior <- function(param,
       0
     ),
     ifelse(!is.na(model),
-      dunif(log(rateparam[((length(rateparam) / 2) + 1):length(rateparam)]),
-        0,
-        40, # NB: CHANGE THIS!
-        log = TRUE
-      ),
-      0
+           dunif(log(rateparam[((length(rateparam) / 2) + 1):length(rateparam)]),
+                 0,
+                 40, # NB: CHANGE THIS!
+                 log = TRUE
+           ),
+           0
     )
   ))
 }
