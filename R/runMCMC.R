@@ -876,10 +876,10 @@ runMCMC <- function(track,
     ## Save posterior draw ##
     #########################
     if (iter > burnin) {
-      allParam[as.character(iter), ] <-
+      allParam[format(iter, scientific = FALSE, trim = TRUE), ] <-
         cbind(matrix(param, ncol = length(param)), matrix(mu, ncol = 2 * nbStates))
       if (updateState && !is.null(Q)) {
-        allRates[as.character(iter), , ] <-
+        allRates[format(iter, scientific = FALSE, trim = TRUE), , ] <-
           matrix(
             unlist(lapply(Q, function(q) {
               q[!diag(nbStates)]
@@ -888,17 +888,17 @@ runMCMC <- function(track,
             nrow = nbStates * (nbStates - 1)
           )
       } else if (updateState) {
-        allRateParam[as.character(iter), ] <- rateparam
+        allRateParam[format(iter, scientific = FALSE, trim = TRUE), ] <- rateparam
       }
 
       if (iter %% thinStates == 0 && updateState) {
 
-        allStates[as.character(iter), ] <-
+        allStates[format(iter, scientific = FALSE, trim = TRUE), ] <-
           unlist(lapply(obs, function(ob) {
             ob[, "state"]
           }))
       }
-      allLLk[as.character(iter)] <- oldllk
+      allLLk[format(iter, scientific = FALSE, trim = TRUE)] <- oldllk
     }
 
 
