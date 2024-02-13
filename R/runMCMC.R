@@ -585,7 +585,7 @@ runMCMC <- function(track,
   ###############################
 
   allParam <- matrix(NA, nrow = nbIter - burnin, ncol = nbParam * nbStates)
-  row.names(allParam) <- as.character((burnin + 1):nbIter)
+  row.names(allParam) <- format((burnin + 1):nbIter, scientific = FALSE, trim = TRUE)
   colnames(allParam) <- c(
     paste("tau_pos[", 1:nbStates, "]", sep = ""),
     paste("tau_vel[", 1:nbStates, "]", sep = ""),
@@ -606,7 +606,7 @@ runMCMC <- function(track,
     )
   )
   allLLk <- rep(NA, nbIter - burnin)
-  names(allLLk) <- as.character((burnin + 1):nbIter)
+  names(allLLk) <- format((burnin + 1):nbIter, scientific = FALSE, trim = TRUE)
   # accParam <- rep(0, nbIter - burnin)
   accParam <- 0
 
@@ -614,7 +614,7 @@ runMCMC <- function(track,
     idx <- seq(0, nbIter, thinStates)[which(seq(0, nbIter, thinStates) > burnin)]
     allStates <-
       matrix(NA, nrow = length(idx), ncol = nrow(track)) # uses a lot of memory if not thinning!
-    row.names(allStates) <- as.character(idx)
+    row.names(allStates) <- format(idx, scientific = FALSE, trim = TRUE)
     rm(idx)
     #allLen <- matrix(NA, nrow = nbIter - burnin, ncol = length(ids))
     #accSwitch <- rep(0, nbIter - burnin)
@@ -624,10 +624,10 @@ runMCMC <- function(track,
         array(
           NA,
           dim = c(nbIter - burnin, nbStates * (nbStates - 1), length(ids)),
-          dimnames = list(as.character((burnin + 1):nbIter), NULL, NULL))
+          dimnames = list(format((burnin + 1):nbIter, scientific = FALSE, trim = TRUE), NULL, NULL))
     } else {
       allRateParam <- matrix(NA, nrow = nbIter - burnin, ncol = length(rateparam))
-      row.names(allRateParam) <- as.character((burnin + 1):nbIter)
+      row.names(allRateParam) <- format((burnin + 1):nbIter, scientific = FALSE, trim = TRUE)
     }
   }
 
