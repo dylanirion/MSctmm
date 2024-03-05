@@ -411,6 +411,12 @@ runMCMC <- function(track,
   state[which(!is.na(knownStates))] <-
     knownStates[which(!is.na(knownStates))]
 
+  #ensure tau_p > tau_v
+  param[1:(2 * nbStates)] <- c(
+    pmax(param[1:nbStates], param[(nbStates + 1):(2 * nbStates)]),
+    pmin(param[1:nbStates], param[(nbStates + 1):(2 * nbStates)])
+    )
+
   # unpack prior parameters
   priorMean <- priors$mean[1:(nbParam * nbStates)]
   priorSD <- priors$sd[1:(nbParam * nbStates)]
@@ -672,7 +678,7 @@ runMCMC <- function(track,
 
       if (is.null(Q) && !is.na(model)) {
         # propose new rate params
-        newRateParams <- proposeParams(rateparam, NA, rateS)
+        newRateParams <- proposeParams(rateparam, rateS)
       } else {
         newRateParams <- NULL
       }
@@ -785,12 +791,22 @@ runMCMC <- function(track,
     ###################################
 
     newParams <-
-        proposeParams(param, fixPar, S[seq_along(param), seq_along(param)], nbStates)
+        proposeParams(param, S[seq_along(param), seq_along(param)], nbStates)
+    
+    # ensure tau_p > tau_v (should also swap newParams[[1]])
+    newParams[[2]][1:(2 * nbStates)] <- c(
+    pmax(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)]),
+    pmin(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)])
+    )
+    # overwrite fixed params (this could result in tau_v < tau_p if someone uses it to do anything other than force IOU)
+    newParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
 
     newMu <-
-      proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+      proposeParams(mu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
     # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
+    newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
 
+    #NB taus can be 0, but I don't have those models coded
     if (length(param) == 3 * nbStates) {
       positiveConstraintIndexes <- seq_along(param)
     } else if (length(param) == 5 * nbStates) {
@@ -798,7 +814,7 @@ runMCMC <- function(track,
         c(1:(2 * nbStates), seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0])
     }
 
-    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0) || bailOut == 100) {
+    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0)) {
       acceptProb <- 0
     } else {
       # Calculate acceptance ratio
@@ -945,18 +961,9 @@ runMCMC <- function(track,
   )
 }
 
-proposeParams <- function(param, fixedParams, S, nbStates) {
-  if (all(is.na(fixedParams))) {
-    fixedParams <- sapply(param, function(x) {
-      rep(NA, length(x))
-    })
-  }
-  thetasprime <- unlist(fixedParams)
-
+proposeParams <- function(param, S, nbStates) {
   u <- rnorm(length(param))
-  thetasprime[is.na(unlist(fixedParams))] <-
-    param[is.na(unlist(fixedParams))] + as.vector(S[is.na(unlist(fixedParams)), is.na(unlist(fixedParams))] %*% u[is.na(unlist(fixedParams))])
-
+  thetasprime <- param + as.vector(S %*% u)
   return(list(u, thetasprime))
 }
 
