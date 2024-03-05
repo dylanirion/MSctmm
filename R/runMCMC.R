@@ -784,20 +784,8 @@ runMCMC <- function(track,
     ## 2. Update movement parameters ##
     ###################################
 
-    bailOut <- 0
-    pass <- F
-    while (!pass && bailOut <= 100) {
-      # ensure tau_p >= tau_v
-      # On working scale [-Inf,Inf]
-      newParams <-
+    newParams <-
         proposeParams(param, fixPar, S[seq_along(param), seq_along(param)], nbStates)
-      # hack to ensure tau_pos >= tau_vel (limits models we can test)
-      # is there potential to get stuck here?
-      if (all(newParams[[2]][1:nbStates] >= newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
-        pass <- T
-      }
-      bailOut <- bailOut + 1
-    }
 
     newMu <-
       proposeParams(mu, fixMu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
