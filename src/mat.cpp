@@ -149,14 +149,15 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
 
     else if( !std::isinf( dt ) ) { //IOU,OUF/OUO,IID
 
-      double nudt = nu * dt;
-      bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
+      //double nudt = nu * dt;
+      //bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
 
       double c0;
       double c1;
       double c2;
 
-      if( EXP ) { // Exponential functions
+
+      //if( EXP ) { // Exponential functions
         dtau = dt / tau;
         double dift = as_scalar( diff( tau ) );
         vec Exp0 = exp( -dtau );
@@ -164,6 +165,7 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
         c0 = as_scalar( diff( Exp % tau ) );
         c1 = as_scalar( -diff( Exp ) );
         c2 = as_scalar( diff( Exp / tau ) );
+      /*
       } else { // Trigonometric and hyperbolic-trigonometric functions
         Exp = exp( -fdt );
         double Sin0;
@@ -187,6 +189,7 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
         c2 = -omega2 * ( CosE - fdt * SincE );
 
       }
+      */
 
       T(0,0) = c0;
       T(1,0) = c1;
@@ -257,13 +260,13 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
 
     else if( !std::isinf( dt ) ) { //IOU,OUF/OUO,IID
 
-      double nudt = nu * dt;
-      bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
+      //double nudt = nu * dt;
+      //bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
 
       double c1;
 
       // Initially cancelling terms
-      if( EXP ) { // Exponential functions
+      //if( EXP ) { // Exponential functions
         dtau = dt / tau;
         double dift = as_scalar( diff( tau ) );
         vec Exp0 = exp( -dtau );
@@ -277,6 +280,7 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
 
         Q(0,0) = ( T2(0) * S1 - S12 + T2(1) * S2) / dift2;
         Q(1,1) = ( T2(1) * S1 - S12 + T2(0) * S2) / dift2 * omega2;
+      /*
       } else { // Trigonometric and hyperbolic-trigonometric functions
         //Need these again
         Exp = exp( -fdt );
@@ -313,6 +317,7 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
           Q(1,1) = ( OUTER + Sin2 + CROSS ) * omega2;
         }
       }
+      */
 
       //Initially vanishing terms
       double c12 = pow( c1, 2 );
