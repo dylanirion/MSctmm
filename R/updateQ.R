@@ -1,4 +1,3 @@
-
 #' Update transition rates
 #'
 #' @param nbStates Number of states
@@ -13,38 +12,40 @@
 #'
 #' @importFrom gtools rdirichlet
 #' @export
-updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon)
-{
-    # time spent in each state
-    stateTab <- rbind(data[1,c("time","state")], # to include first interval
-                      switch,
-                      data[nrow(data),c("time","state")]) # to include last interval
-    timeInStates <- sapply(1:nbStates, function(i)
-        sum(diff(stateTab[,"time"])[which(stateTab[,"state"]==i)],na.rm=TRUE))
+updateQ <- function(nbStates, data, switch, priorShape, priorRate, priorCon) {
+  # time spent in each state
+  stateTab <- rbind(
+    data[1, c("time", "state")], # to include first interval
+    switch,
+    data[nrow(data), c("time", "state")]
+  ) # to include last interval
+  timeInStates <- sapply(1:nbStates, function(i) {
+    sum(diff(stateTab[, "time"])[which(stateTab[, "state"] == i)], na.rm = TRUE)
+  })
 
-    # count intervals spent in each state
-    countIntervals <- table(factor(rle(data[,"state"])$values,levels=1:nbStates))
+  # count intervals spent in each state
+  countIntervals <- table(factor(rle(data[, "state"])$values, levels = 1:nbStates))
 
-    # sample rates out of each state
-    shape <- priorShape + countIntervals
-    rate <- priorRate + timeInStates
-    r <- rgamma( n = nbStates, shape = shape, rate = rate )
+  # sample rates out of each state
+  shape <- priorShape + countIntervals
+  rate <- priorRate + timeInStates
+  r <- rgamma(n = nbStates, shape = shape, rate = rate)
 
-    # sample transition probabilities
-    allCounts <- table(factor(data[-nrow(data), "state"], levels = 1:nbStates), factor(data[-1,"state"], levels = 1:nbStates))
-    nonDiagCounts <- matrix(t(allCounts)[!diag(nbStates)], nrow = nbStates, byrow = TRUE)
-    trProbs <- t(sapply(1:nrow(nonDiagCounts), function(i) rdirichlet(n = 1, alpha = nonDiagCounts[i, ] + priorCon[-i])))
-    # there is an NaN issue when any states are not observed
-    # we can either set these all equal to 1/(nbStates-1) or I think more realistically,
-    # randomly assign all the probability to one transition
-    for( i in which( is.nan( rowSums( trProbs ) ) ) ) {
-      trProbs[i,] <- sample( c( 1, rep( 0, nbStates - 2 ) ), nbStates - 1, F )
-    }
+  # sample transition probabilities
+  allCounts <- table(factor(data[-nrow(data), "state"], levels = 1:nbStates), factor(data[-1, "state"], levels = 1:nbStates))
+  nonDiagCounts <- matrix(t(allCounts)[!diag(nbStates)], nrow = nbStates, byrow = TRUE)
+  trProbs <- t(sapply(1:nrow(nonDiagCounts), function(i) rdirichlet(n = 1, alpha = nonDiagCounts[i, ] + priorCon[-i])))
+  # there is an NaN issue when any states are not observed
+  # we can either set these all equal to 1/(nbStates-1) or I think more realistically,
+  # randomly assign all the probability to one transition
+  for (i in which(is.nan(rowSums(trProbs)))) {
+    trProbs[i, ] <- sample(c(1, rep(0, nbStates - 2)), nbStates - 1, F)
+  }
 
-    # update generator matrix from rates and transition probs
-    Q <- -diag(nbStates)
-    Q[!Q] <- t(trProbs)
-    Q <- t( Q * rep( r, each = nbStates ) )
+  # update generator matrix from rates and transition probs
+  Q <- -diag(nbStates)
+  Q[!Q] <- t(trProbs)
+  Q <- t(Q * rep(r, each = nbStates))
 
-    return(Q)
+  return(Q)
 }
