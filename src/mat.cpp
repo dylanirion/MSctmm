@@ -149,7 +149,7 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
 
     else if( !std::isinf( dt ) ) { //IOU,OUF/OUO,IID
 
-      //double nudt = nu * dt;
+      double nudt = nu * dt;
       //bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
       bool EXP = nudt > 0.8813736;
 
