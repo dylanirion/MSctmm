@@ -527,25 +527,21 @@ runMCMC <- function(track,
     # colnames(obs[[id]]) <- c("x", "y", "time", "ID",  "state")
     indSwitch <-
       which(obs[[id]][-1, "state"] != obs[[id]][-nbObs, "state"]) + 1
-    switch[[id]
-    ] <- cbind(
+    switch[[id]] <- cbind(
       "time" = obs[[id]][indSwitch, "time"] - 0.001,
       "state" = rle(obs[[id]][, "state"])$values[-1]
     )
     # colnames(switch[[id]]) <- c("time", "state")
 
-    if (!all(is.na(switch[[id]
-    ]))) {
+    if (!all(is.na(switch[[id]]))) {
       data.list[[id]] <- rbind(
         obs[[id]][, c("x", "y", "time", "ID", "state", "group")],
         cbind(
           "x" = NA,
           "y" = NA,
-          "time" = switch[[id]
-          ][, "time"],
+          "time" = switch[[id]][, "time"],
           "ID" = id,
-          "state" = switch[[id]
-          ][, "state"],
+          "state" = switch[[id]][, "state"],
           "group" = ifelse("group" %in% colnames(track), track[which(track$ID == id), "group"], 1)
         )
       )
@@ -693,8 +689,7 @@ runMCMC <- function(track,
             obs = obs[[id]],
             nbStates = nbStates,
             knownStates = known[[id]],
-            switch = switch[[id]
-            ],
+            switch = switch[[id]],
             updateLim = updateLim[[id]],
             param = param,
             mu = unlist(mu),
@@ -775,8 +770,7 @@ runMCMC <- function(track,
           updateQ(
             nbStates = nbStates,
             data = data.list[[id]],
-            switch = switch[[id]
-            ],
+            switch = switch[[id]],
             priorShape = priorShape,
             priorRate = priorRate,
             priorCon = priorCon
@@ -792,12 +786,25 @@ runMCMC <- function(track,
 
     newParams <-
         proposeParams(param, S[seq_along(param), seq_along(param)], nbStates)
-    
+
     # ensure tau_p > tau_v (should also swap newParams[[1]])
     newParams[[2]][1:(2 * nbStates)] <- c(
     pmax(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)]),
     pmin(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)])
     )
+    # TEST: constrain OUF sigma_x & sigma_y to be < IOU sigma_x, sigma_y
+    iou <- which(unlist(fixPar)[1:nbStates] == Inf)
+    if (length(iou)) {
+      for (state in seq_len(nbStates)[-iou]) {
+        if (length(param) == 3 * nbStates) { # isotropic sigma (single value)
+          newParams[[2]][(2 * nbStates) + state] <- min(newParams[[2]][(2 * nbStates) + state], newParams[[2]][(2 * nbStates) + iou])
+        } else if (length(param) == 5 * nbStates) { # anisotropic sigma (3 values per state, first 2 are x, y)
+          sigmaidxs <- c(1, 2) + (2 * nbStates) + ((state - 1) * 3)
+          newParams[[2]][sigmaidxs] <- pmin(newParams[[2]][sigmaidxs], newParams[[2]][c(1, 2) + (2 * nbStates) + ((iou - 1) * 3)])
+        }
+      }
+    }
+
     # overwrite fixed params (this could result in tau_v < tau_p if someone uses it to do anything other than force IOU)
     newParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
 
