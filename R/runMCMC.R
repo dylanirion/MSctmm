@@ -792,18 +792,6 @@ runMCMC <- function(track,
     pmax(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)]),
     pmin(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)])
     )
-    # TEST: constrain OUF sigma_x & sigma_y to be < IOU sigma_x, sigma_y
-    iou <- which(unlist(fixPar)[1:nbStates] == Inf)
-    if (length(iou)) {
-      for (state in seq_len(nbStates)[-iou]) {
-        if (length(param) == 3 * nbStates) { # isotropic sigma (single value)
-          newParams[[2]][(2 * nbStates) + state] <- min(newParams[[2]][(2 * nbStates) + state], newParams[[2]][(2 * nbStates) + iou])
-        } else if (length(param) == 5 * nbStates) { # anisotropic sigma (3 values per state, first 2 are x, y)
-          sigmaidxs <- c(1, 2) + (2 * nbStates) + ((state - 1) * 3)
-          newParams[[2]][sigmaidxs] <- pmin(newParams[[2]][sigmaidxs], newParams[[2]][c(1, 2) + (2 * nbStates) + ((iou - 1) * 3)])
-        }
-      }
-    }
 
     # overwrite fixed params (this could result in tau_v < tau_p if someone uses it to do anything other than force IOU)
     newParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
