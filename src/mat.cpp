@@ -172,15 +172,17 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
         double Sinc0;
         double Cos0;
 
-        if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
+        //if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
           Sin0 = sinh( nudt );
           Sinc0 = as<double>( wrap( sinch( as<NumericVector>( wrap( nudt ) ), as<NumericVector>( wrap ( Sin0 ) ) ) ) );
           Cos0 = cosh( nudt );
+        /*
         } else { // Trigonometric
           Sin0 = sin(nudt);
           Sinc0 = as<double>( wrap( sinc( as<NumericVector>( wrap( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
           Cos0 = cos(nudt);
         }
+         */
         double SincE = Sinc0 * as_scalar( Exp );
         double CosE = Cos0 * as_scalar( Exp );
 
@@ -286,15 +288,17 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
         double Sinc0;
         double Cos0;
 
-        if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
+        //if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
           Sin0 = sinh( nudt );
           Sinc0 = as<double>( wrap( sinch( as<NumericVector>( wrap ( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
           Cos0 = cosh( nudt );
+        /*
         } else { // Trigonometric
           Sin0 = sin( nudt );
           Sinc0 = as<double>( wrap( sinc( as<NumericVector>( wrap ( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
           Cos0 = cos( nudt );
         }
+        */
         // Also need these again
         double SincE = Sinc0 * as_scalar( Exp );
         c1 = -( omega2 * dt ) * SincE;
