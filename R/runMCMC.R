@@ -598,7 +598,7 @@ runMCMC <- function(track,
     switch((nbParam == 7) + 1,
       paste("sigma[", 1:nbStates, "]", sep = ""),
       paste(
-        c("sigma_x[", "sigma_y[", "sigma_xy["),
+        c("sigma_p[", "sigma_v[", "sigma_pv["),
         rep(1:nbStates, each = 3),
         rep("]", nbStates * 3),
         sep = ""
