@@ -153,7 +153,7 @@ mat makeT(double tau_pos, double tau_vel, double dt) {
 
     double fdt = f * dt;
 
-    if(std::isinf(tau(0)) || ( tau(0) != 0 && tau(1) != 0)) { //IOU, OUF/OUO
+    if(!std::isinf(tau(0)) && tau(0) != 0 && tau(1) != 0) { //IOU, OUF/OUO
       if(!std::isinf(dt)) {
 
         double nudt = nu * dt;
@@ -242,11 +242,11 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
         omega2 = 1/tau(0);
         Q(1,1) = omega2;
       }
-    } else if( std::isinf( tau(0) ) ) { // IOU
+    } else if(std::isinf(tau(0))) { // IOU
       omega2 = 1/tau(1);
       Q(1,1) = omega2;
-      f = as_scalar( mean( 1/tau ) );
-      nu = as_scalar( diff( 1 / tau ) ) / 2;
+      f = as_scalar(1 / tau(1) / 2);
+      nu = as_scalar(1 / tau(1) / 2);
       tfomega2 = 2 * f / omega2;
     } else if( tau(0) > tau(1) ){ // overdamped
       f = as_scalar( mean( 1/tau ) );
@@ -274,7 +274,7 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
         Q(1,0) = as_scalar( clamp ( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
         Q(0,1) = as_scalar( clamp ( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
       }
-    } else if(std::isinf(tau(0)) || ( tau(0) != 0 && tau(1) != 0)) {
+    } else if(tau(0) != 0 && tau(1) != 0) {
       if( !std::isinf( dt ) ) { //IOU,OUF/OUO,IID
 
         double nudt = nu * dt;
