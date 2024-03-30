@@ -22,12 +22,8 @@
 #'   * `knownStates`: vector. Known states with `NA` for those to estimate. Length `nrow(track)`
 #'   * `kappa`: integer. Maximum transition rate to bound rates when they are modelled. Length 1
 #' @param priors list. Parameters of prior distributions, with components:
-#'   * `mean`: vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-#'   of length `5 * nbStates` for movement parameters or `5 * nbStates +
-#'   length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
-#'   * `sd`: vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-#'   of length `5 * nbStates` for movement parameters or `5 * nbStates +
-#'   length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
+#'   * `func`: list of distribution function names, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
+#'   * `args`: list of list containg function args for distribution functions, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
 #'   * `shape`: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
 #'   * `rate`: vector. Rates of gamma priors for the transition rates when Gibbs sampling
 #'   * `con`: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
@@ -65,9 +61,9 @@
 #' }
 #'
 #' @importFrom stats dnorm runif rnorm rexp rgamma
+#' @importFrom msm dtnorm
 #' @importFrom prettyunits vague_dt pretty_dt
 #' @importFrom ramcmc adapt_S
-#' @importFrom msm dtnorm
 #' @importFrom rerddap griddap
 #' @export
 #'
@@ -222,11 +218,10 @@ runMCMC <- function(track,
 
   # Check priors arguments and lengths
   # TODO smarter calculation when args are fixed
-  if (is.null(priors$mean) || is.null(priors$sd)) {
-    stop("argument 'priors' missing: ", paste(c("mean", "sd")[which(sapply(priors[c("mean", "sd")], is.null))], collapse = ", "))
+  if (is.null(priors$func) || is.null(priors$args)) {
+    stop("argument 'priors' missing: ", paste(c("func", "args")[which(sapply(priors[c("func", "args")], is.null))], collapse = ", "))
   }
-  for (arg in c("mean", "sd")) {
-    # We dont check for t_alpha here because it has a uniform prior specified elsewhere
+  for (arg in c("func", "args")) {
     if (is.na(model) && length(priors[[arg]]) != nbParam * nbStates) {
       stop(
         "argument 'priors$",
@@ -238,12 +233,12 @@ runMCMC <- function(track,
       )
     }
     if (!is.na(model) &&
-      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)) {
+      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)  + length(inits$t_alpha)) {
       stop(
         "argument 'priors$",
         arg,
         "' has the wrong length, expected ",
-        nbParam * nbStates + length(inits$alpha),
+        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
         " but got ",
         length(priors[[arg]])
       )
@@ -418,8 +413,8 @@ runMCMC <- function(track,
     )
 
   # unpack prior parameters
-  priorMean <- priors$mean[1:(nbParam * nbStates)]
-  priorSD <- priors$sd[1:(nbParam * nbStates)]
+  priorFunc <- priors$func[1:(nbParam * nbStates)]
+  priorArgs <- priors$args[1:(nbParam * nbStates)]
   priorShape <- priors$shape
   priorRate <- priors$rate
   priorCon <- priors$con
@@ -427,8 +422,8 @@ runMCMC <- function(track,
   # check if rate matrix provided
   # TODO just check model here?
   if (!updateState) {
-    ratePriorMean <- NULL
-    ratePriorSD <- NULL
+    ratePriorFunc <- NULL
+    ratePriorArgs <- NULL
     rateparam <- NULL
   } else if (!is.null(inits$Q) &&
     length(inits$Q) == length(unique(track$ID)) &&
@@ -436,8 +431,8 @@ runMCMC <- function(track,
     Q <- inits$Q
     names(Q) <- unique(track$ID)
     kappa <- fixed$kappa
-    ratePriorMean <- NULL
-    ratePriorSD <- NULL
+    ratePriorFunc <- NULL
+    ratePriorArgs <- NULL
     rateparam <- NULL
   } else {
     # if no rate matrix provided, rate params must be
@@ -445,10 +440,10 @@ runMCMC <- function(track,
     kappa <- fixed$kappa
     rateS <-
       props$S[(nbParam * nbStates + 1):nrow(props$S), (nbParam * nbStates + 1):ncol(props$S)]
-    ratePriorMean <-
-      priors$mean[(nbParam * nbStates + 1):length(priors$mean)]
-    ratePriorSD <-
-      priors$sd[(nbParam * nbStates + 1):length(priors$sd)]
+    ratePriorFunc <-
+      priors$func[(nbParam * nbStates + 1):length(priors$func)]
+    ratePriorArgs <-
+      priors$args[(nbParam * nbStates + 1):length(priors$args)]
     rateparam <- c(inits$alpha, inits$t_alpha)
   }
 
@@ -577,11 +572,11 @@ runMCMC <- function(track,
     mu,
     fixPar,
     fixMu,
-    priorMean,
-    priorSD,
+    priorFunc,
+    priorArgs,
     rateparam,
-    ratePriorMean,
-    ratePriorSD,
+    ratePriorFunc,
+    ratePriorArgs,
     kappa,
     model
   )
@@ -730,11 +725,11 @@ runMCMC <- function(track,
             mu,
             fixPar,
             fixMu,
-            priorMean,
-            priorSD,
+            priorFunc,
+            priorArgs,
             newRateParams[[2]],
-            ratePriorMean,
-            ratePriorSD,
+            ratePriorfunc,
+            ratePriorArgs,
             kappa,
             model
           )
@@ -820,11 +815,11 @@ runMCMC <- function(track,
         newMu[[2]],
         fixPar,
         fixMu,
-        priorMean,
-        priorSD,
+        priorFunc,
+        priorArgs,
         rateparam,
-        ratePriorMean,
-        ratePriorSD,
+        ratePriorFunc,
+        ratePriorArgs,
         kappa,
         model
       )
@@ -966,44 +961,30 @@ getLogPrior <- function(param,
                         mu,
                         fixPar,
                         fixMu,
-                        priorMean,
-                        priorSD,
+                        priorFunc,
+                        priorArgs,
                         rateparam,
-                        ratePriorMean,
-                        ratePriorSD,
+                        ratePriorFunc,
+                        ratePriorArgs,
                         kappa,
                         model) {
-  return(sum(
-    dnorm(param[is.na(unlist(fixPar))],
-      priorMean[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
-      priorSD[seq_along(unlist(fixPar))][is.na(unlist(fixPar))],
-      log = TRUE
-    ),
-    dnorm(mu[is.na(unlist(fixMu)) & !is.na(mu)],
-      priorMean[(length(unlist(fixPar)) + 1):length(priorMean)][is.na(unlist(fixMu)) &
-        !is.na(mu)],
-      priorSD[(length(unlist(fixPar)) + 1):length(priorSD)][is.na(unlist(fixMu)) &
-        !is.na(mu)],
-      log = TRUE
-    ),
-    ifelse(
-      !is.na(model),
-      msm::dtnorm(
-        log(rateparam[1:(length(rateparam) / 2)]),
-        ratePriorMean,
-        ratePriorSD,
-        upper = log(kappa),
-        log = TRUE
-      ),
-      0
-    ),
-    ifelse(!is.na(model),
-      dunif(log(rateparam[((length(rateparam) / 2) + 1):length(rateparam)]),
-        0,
-        40, # NB: CHANGE THIS!
-        log = TRUE
-      ),
-      0
-    )
-  ))
+  return(
+    sum(
+      unlist(c(
+        sapply(seq_len(length(param)), FUN = function(i) {
+          if (is.na(unlist(fixPar)[i])) {
+            return(do.call(priorFunc[[i]], c(priorArgs[[i]], log = TRUE, x = param[[i]])))
+          }
+        }),
+        sapply(seq_len(length(mu)), FUN = function(i) {
+          if (is.na(unlist(fixMu)[i]) & !is.na(mu[i])) {
+            return(do.call(priorFunc[[length(param) + i]], c(priorArgs[[length(param) + i]], log = TRUE, x = mu[[i]])))
+          }
+        }),
+        sapply(seq_len(length(rateparam)), FUN = function(i) {
+          return(do.call(priorFunc[[i]], c(priorArgs[[i]], log = TRUE, x = rateparam[[i]])))
+        })
+      )
+    ))
+  )
 }
