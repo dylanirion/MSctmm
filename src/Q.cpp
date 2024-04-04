@@ -152,7 +152,7 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
         i++;
         //std::this_thread::sleep_for(std::chrono::milliseconds(10 * i)); //sleep for 0.01 seconds, increasing as we try more and more
       } else {
-        Rcpp:NumericVector temp = sst_vec[!is_nan(sst_vec)];
+        Rcpp::NumericVector temp = sst_vec[!is_nan(sst_vec)];
         sst = mean(temp);
       }
     }
