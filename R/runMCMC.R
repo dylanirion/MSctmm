@@ -81,6 +81,7 @@ runMCMC <- function(track,
                     updateState = TRUE,
                     adapt = FALSE,
                     model = NA) {
+  options(warn = 1) # show warnings as they occur
   # Check track df
   if (!is.data.frame(track)) {
     stop("argument 'track' is not a data.frame")
@@ -425,7 +426,7 @@ runMCMC <- function(track,
     ratePriorFunc <- NULL
     ratePriorArgs <- NULL
     rateparam <- NULL
-  } else if (!is.null(inits$Q) &&
+  } else if (is.na(model) && !is.null(inits$Q) &&
     length(inits$Q) == length(unique(track$ID)) &&
     "list" %in% class(inits$Q)) {
     Q <- inits$Q
@@ -674,6 +675,7 @@ runMCMC <- function(track,
         newRateParams <- NULL
       }
 
+      #NB: might make sense for some t_alpha to be negative!
       if (!is.null(newRateParams) && any(newRateParams[[2]] <= 0)) {
         acceptProb <- 0
       } else {
@@ -796,7 +798,7 @@ runMCMC <- function(track,
     # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
     newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
 
-    #NB taus can be 0, but I don't have those models coded
+    #NB taus can be 0
     if (length(param) == 3 * nbStates) {
       positiveConstraintIndexes <- seq_along(param)
     } else if (length(param) == 5 * nbStates) {
