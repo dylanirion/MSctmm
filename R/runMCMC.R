@@ -11,7 +11,7 @@
 #'   * `Q`:
 #'   * `state`: vector. Initial state sequence, length `nrow(track)`
 #'   * `alpha`: vector. Length dependent on model choice
-#'   * `t_alpha`: vector. Length dependent on model choice
+#'   * `x_alpha`: vector. Length dependent on model choice
 #' @param fixed list of fixed parameters:
 #'   * `tau_pos`: vector. Fixed values of \eqn{tau_{pos}} for each state with `NA` for parameters to estimate. Length `nbStates`
 #'   * `tau_vel`: vector. Fixed values of \eqn{tau_{vel}} for each state with `NA` for parameters to estimate. Length `nbStates`
@@ -22,8 +22,8 @@
 #'   * `knownStates`: vector. Known states with `NA` for those to estimate. Length `nrow(track)`
 #'   * `kappa`: integer. Maximum transition rate to bound rates when they are modelled. Length 1
 #' @param priors list. Parameters of prior distributions, with components:
-#'   * `func`: list of distribution function names, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
-#'   * `args`: list of list containg function args for distribution functions, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `t_alpha` by MH
+#'   * `func`: list of distribution function names, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `x_alpha` by MH
+#'   * `args`: list of list containg function args for distribution functions, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `x_alpha` by MH
 #'   * `shape`: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
 #'   * `rate`: vector. Rates of gamma priors for the transition rates when Gibbs sampling
 #'   * `con`: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
@@ -31,7 +31,7 @@
 #'   * `S`: matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is `SS'`.
 #'   Dimensions `(5 * nbStates, 5 * nbStates)` when not modelling rate
 #'   parameters (`model` is `NA`) and `(5 * nbStates + length(alpha) +
-#'   length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))`
+#'   length(x_alpha), 5 * nbStates + length(alpha) + length(x_alpha))`
 #'   otherwise.
 #'   * `updateLim`: vector. Two values: min and max length of updated state sequence
 #'   * `updateProbs`: vector. Probabilities for each element of `updateLim[1]:updateLim[2]` (if `NULL`,
@@ -150,13 +150,13 @@ runMCMC <- function(track,
   if (updateState && is.null(inits$Q) &&
     (
       is.null(fixed$kappa) ||
-        is.null(inits$alpha) || is.null(inits$t_alpha) || is.na(model)
+        is.null(inits$alpha) || is.null(inits$x_alpha) || is.na(model)
     )) {
     stop(
       "argument 'inits$Q' is null, expected ",
       paste(
         c("fixed$kappa")[which(is.null(fixed$kappa))],
-        c("inits$alpha", "inits$t_alpha")[which(sapply(inits[c("alpha", "t_alpha")], is.null))],
+        c("inits$alpha", "inits$x_alpha")[which(sapply(inits[c("alpha", "x_alpha")], is.null))],
         c("model")[which(is.na(model))],
         collapse = ", "
       ),
@@ -215,6 +215,7 @@ runMCMC <- function(track,
     )
   }
 
+  # movement parameters (including mu)
   nbParam <- 4 + length(inits$sigma) / nbStates
 
   # Check priors arguments and lengths
@@ -234,12 +235,12 @@ runMCMC <- function(track,
       )
     }
     if (!is.na(model) &&
-      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)  + length(inits$t_alpha)) {
+      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)  + length(inits$x_alpha)) {
       stop(
         "argument 'priors$",
         arg,
         "' has the wrong length, expected ",
-        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
+        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
         " but got ",
         length(priors[[arg]])
       )
@@ -285,16 +286,16 @@ runMCMC <- function(track,
   if (!is.na(model) &&
     all(
       dim(props$S) != c(
-        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
-        nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)
+        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
+        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha)
       )
     )) {
     stop(
       "argument 'props$S' has the wrong dimensions, expected ",
       paste(
         c(
-          nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha),
-          nbParam * nbStates + length(inits$alpha) + length(inits$t_alpha)
+          nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
+          nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha)
         ),
         collpase = ", "
       ),
@@ -372,7 +373,7 @@ runMCMC <- function(track,
       "argument 'model' is not NA, ignoring ",
       paste(c(
         "priors$shape", "priors$rate", "priors$con"
-      )[which(sapply(priors[c("shape", "rate", "con")], is.null))], collapse = ", ")
+      )[which(!sapply(priors[c("shape", "rate", "con")], is.null))], collapse = ", ")
     )
   }
   if (is.na(model) &&
@@ -445,7 +446,7 @@ runMCMC <- function(track,
       priors$func[(nbParam * nbStates + 1):length(priors$func)]
     ratePriorArgs <-
       priors$args[(nbParam * nbStates + 1):length(priors$args)]
-    rateparam <- c(inits$alpha, inits$t_alpha)
+    rateparam <- c(inits$alpha, inits$x_alpha)
   }
 
   # unpack proposal parameters
@@ -594,7 +595,7 @@ runMCMC <- function(track,
     switch((nbParam == 7) + 1,
       paste("sigma[", 1:nbStates, "]", sep = ""),
       paste(
-        c("sigma_p[", "sigma_v[", "sigma_pv["),
+        c("sigma_xx[", "sigma_yy[", "sigma_xy["),
         rep(1:nbStates, each = 3),
         rep("]", nbStates * 3),
         sep = ""
@@ -675,8 +676,9 @@ runMCMC <- function(track,
         newRateParams <- NULL
       }
 
-      #NB: might make sense for some t_alpha to be negative!
-      if (!is.null(newRateParams) && any(newRateParams[[2]] <= 0)) {
+      
+
+      if (!is.null(newRateParams) && any(!constraintsFromDensityArgs(newRateParams[[2]], ratePriorArgs))) {
         acceptProb <- 0
       } else {
         acceptProb <- 0
@@ -730,7 +732,7 @@ runMCMC <- function(track,
             priorFunc,
             priorArgs,
             newRateParams[[2]],
-            ratePriorfunc,
+            ratePriorFunc,
             ratePriorArgs,
             kappa,
             model
@@ -798,15 +800,7 @@ runMCMC <- function(track,
     # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
     newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
 
-    #NB taus can be 0
-    if (length(param) == 3 * nbStates) {
-      positiveConstraintIndexes <- seq_along(param)
-    } else if (length(param) == 5 * nbStates) {
-      positiveConstraintIndexes <-
-        c(1:(2 * nbStates), seq(2 * nbStates + 1, length(param))[seq_len(3 * nbStates) %% 3 != 0])
-    }
-
-    if (any(newParams[[2]][intersect(positiveConstraintIndexes, which(is.na(unlist(fixPar))))] <= 0)) {
+    if (any(!constraintsFromDensityArgs(newParams[[2]], priorArgs))) {
       acceptProb <- 0
     } else {
       # Calculate acceptance ratio
@@ -984,9 +978,17 @@ getLogPrior <- function(param,
           }
         }),
         sapply(seq_len(length(rateparam)), FUN = function(i) {
-          return(do.call(priorFunc[[i]], c(priorArgs[[i]], log = TRUE, x = rateparam[[i]])))
+          return(do.call(ratePriorFunc[[i]], c(ratePriorArgs[[i]], log = TRUE, x = rateparam[[i]])))
         })
       )
     ))
   )
+}
+
+constraintsFromDensityArgs <- function(param, args) {
+  return(sapply(seq_len(length(param)), FUN = function(i) {
+    lower <- ifelse(any(names(args[[i]]) %in% c("min", "lower")), param[i] >= args[[i]][[which(names(args[[i]]) %in% c("min", "lower"))]], TRUE)
+    upper <- ifelse(any(names(args[[i]]) %in% c("max", "upper")), param[i] <= args[[i]][[which(names(args[[i]]) %in% c("max", "upper"))]], TRUE)
+    return(lower && upper)
+  }))
 }
