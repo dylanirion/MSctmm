@@ -394,8 +394,6 @@ runMCMC <- function(track,
   knownStates <- fixed$knownStates
 
   # initial movement parameters
-  # NB considering only isotropic case for now, this will eventually need to be a matrix
-  # and kalman_rcpp and MakeQ/Sigma will need to accept a matrix
   param <- unlist(inits[c("tau_pos", "tau_vel", "sigma")])
   mu <- unlist(inits$mu)
   state <- inits$state
@@ -786,23 +784,18 @@ runMCMC <- function(track,
     newParams <-
         proposeParams(param, S[seq_along(param), seq_along(param)], nbStates)
 
-    # ensure tau_p > tau_v (should also swap newParams[[1]])
-    newParams[[2]][1:(2 * nbStates)] <- c(
-    pmax(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)]),
-    pmin(newParams[[2]][1:nbStates], newParams[[2]][(nbStates + 1):(2 * nbStates)])
-    )
-
-    # overwrite fixed params (this could result in tau_v < tau_p if someone uses it to do anything other than force IOU)
+    # overwrite fixed params
     newParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
 
-    newMu <-
-      proposeParams(mu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
-    # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-    newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
-
-    if (any(!constraintsFromDensityArgs(newParams[[2]], priorArgs))) {
+    if (any(!constraintsFromDensityArgs(newParams[[2]], priorArgs)) || any(newParams[[2]][1:nbStates] < newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
       acceptProb <- 0
     } else {
+      
+      newMu <-
+        proposeParams(mu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
+      newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
+
       # Calculate acceptance ratio
       data.mat <- do.call("rbind", data.list)
       data.mat <- data.mat[, c("x", "y", "time", "ID", "state")]
@@ -987,6 +980,7 @@ getLogPrior <- function(param,
 
 constraintsFromDensityArgs <- function(param, args) {
   return(sapply(seq_len(length(param)), FUN = function(i) {
+    if (is.na(param[i])) return(TRUE)
     lower <- ifelse(any(names(args[[i]]) %in% c("min", "lower")), param[i] >= args[[i]][[which(names(args[[i]]) %in% c("min", "lower"))]], TRUE)
     upper <- ifelse(any(names(args[[i]]) %in% c("max", "upper")), param[i] <= args[[i]][[which(names(args[[i]]) %in% c("max", "upper"))]], TRUE)
     return(lower && upper)

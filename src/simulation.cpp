@@ -8,165 +8,194 @@ using namespace arma;
 using namespace Rcpp;
 
 //' Simulate a sample path from an endpoint conditioned CTMC by modified
- //' rejection sampling.
- //'
- //' @param a,b States at the interval endpoints, provided as integers
- //'    corresponding to rows of the CTMC rate matrix.
- //' @param t0,t1 times of the interval endpoints
- //' @param Q CTMC rate matrix
- //'
- //' @return matrix whose first column is the sequence of transition times
- //' bookended by interval endpoints, and whose second column is the sequence of
- //' states
- //'
- //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
- // [[Rcpp::export]]
- arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix& Q, const double k) {
-   const int limit = 50000;
-   const int sublimit = 50000;
+//' rejection sampling.
+//'
+//' @param a,b States at the interval endpoints, provided as integers
+//'    corresponding to rows of the CTMC rate matrix.
+//' @param t0,t1 times of the interval endpoints
+//' @param Q CTMC rate matrix
+//'
+//' @return matrix whose first column is the sequence of transition times
+//' bookended by interval endpoints, and whose second column is the sequence of
+//' states
+//'
+//' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
+// [[Rcpp::export]]
+arma::mat sample_path_mr(const int a, const int b, const double t0, const double t1, const Rcpp::NumericMatrix &Q, const double k)
+{
+  const int limit = 50000;
+  const int sublimit = 50000;
 
-   // Get the number of states and initialize vector of states
-   int n_states = Q.nrow();
-   Rcpp::IntegerVector states = Rcpp::seq_len(n_states);
+  // Get the number of states and initialize vector of states
+  int n_states = Q.nrow();
+  Rcpp::IntegerVector states = Rcpp::seq_len(n_states);
 
-   // Initialize booleans for whether to keep simulating and whether a
-   // valid path has been obtained.
-   bool valid_path = false;
+  // Initialize booleans for whether to keep simulating and whether a
+  // valid path has been obtained.
+  bool valid_path = false;
 
-   // Initialize objects for storing the sequences of times and states
-   std::vector<double> time_vec;
-   std::vector<int> state_vec;
+  // Initialize objects for storing the sequences of times and states
+  std::vector<double> time_vec;
+  std::vector<int> state_vec;
 
-   // Sample paths until a valid path has been obtained
-   int c = 0;
-   int j = 0;
-   while(valid_path == false && c < limit) {
-     c++;
+  // Sample paths until a valid path has been obtained
+  int c = 0;
+  int j = 0;
+  while (valid_path == false && c < limit)
+  {
+    c++;
 
-     // Set boolean to initiate forward sampling
-     bool keep_going = true;
+    // Set boolean to initiate forward sampling
+    bool keep_going = true;
 
-     // insert the initial time and state
-     time_vec.push_back(t0);
-     state_vec.push_back(a);
+    // insert the initial time and state
+    time_vec.push_back(t0);
+    state_vec.push_back(a);
 
-     // set the current time and state
-     Rcpp::NumericVector cur_time(1, t0);
-     Rcpp::IntegerVector cur_state(1, a);
-     double cur_rate = -Q(cur_state[0] - 1, cur_state[0] - 1);
+    // set the current time and state
+    Rcpp::NumericVector cur_time(1, t0);
+    Rcpp::IntegerVector cur_state(1, a);
+    double cur_rate = -Q(cur_state[0] - 1, cur_state[0] - 1);
 
-     // get the state transition probabilities
-     Rcpp::NumericVector state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
+    // get the state transition probabilities
+    Rcpp::NumericVector state_probs = pmax(Q(cur_state[0] - 1, _), 0);
 
-     // If the beginning and end states don't match, sample first transition
-     if(a != b) {
+    // If the beginning and end states don't match, sample first transition
+    if (a != b)
+    {
 
-       // sample the first transition time
-       cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1-t0) * k))) / k;
+      // sample the first potential transition time
+      cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1 - t0) * k))) / k;
 
-       // sample the next state
-       cur_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
+      // sample the next state
+      Rcpp::IntegerVector pot_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
 
-       // update the rate of transition out of the new state
-       // and update the state transition probabilities
-       cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
-       state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
+      // update the rate of transition out of the new state
+      double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
-       // Insert the next state and transition time into the
-       // appropriate vectors
-       time_vec.push_back(cur_time[0]);
-       state_vec.push_back(cur_state[0]);
-     }
+      // if actual switch, update time, state, rate and transition probabilities
+      if (Rcpp::runif(1)[0] < (pot_rate / k))
+      {
+        state_probs = pmax(Q(cur_state[0] - 1, _), 0);
+        cur_state = pot_state;
+        cur_rate = pot_rate;
 
-     // Proceed with forward sampling algorithm
-     j = 0;
-     while(keep_going == true && j < sublimit) {
-       j++;
+        // Insert the next state and transition time into the
+        // appropriate vectors
+        time_vec.push_back(cur_time[0]);
+        state_vec.push_back(cur_state[0]);
+      }
+    }
 
-       if(j == sublimit) {
-         keep_going = false;
-         valid_path = false;
-         time_vec.clear();
-         state_vec.clear();
-         break;
-       }
+    // Proceed with forward sampling algorithm
+    j = 0;
+    while (keep_going == true && j < sublimit)
+    {
+      j++;
 
-       // check if the state is an absorbing state
-       if(is_true(all(state_probs == 0))) {
+      if (j == sublimit)
+      {
+        keep_going = false;
+        valid_path = false;
+        time_vec.clear();
+        state_vec.clear();
+        break;
+      }
 
-         // stop sampling forward
-         keep_going = false;
+      // check if the state is an absorbing state
+      if (is_true(all(state_probs == 0)))
+      {
 
-         if(cur_state[0] == b) {
-           valid_path = true;
-         } else {
-           valid_path = false;
-           time_vec.clear();
-           state_vec.clear();
-         }
+        // stop sampling forward
+        keep_going = false;
 
-         break;
-       }
+        if (cur_state[0] == b)
+        {
+          valid_path = true;
+        }
+        else
+        {
+          valid_path = false;
+          time_vec.clear();
+          state_vec.clear();
+        }
 
-       // Sample the next transition time
-       cur_time += Rcpp::rexp(1, cur_rate);
+        break;
+      }
 
-       // If the next time is after the right endpoint, stop
-       // sampling and determine if the path is valid
-       if(cur_time[0] > t1) {
+      // Sample the next transition time
+      cur_time += Rcpp::rexp(1, cur_rate);
 
-         // Stop forward sampling
-         keep_going = false;
+      // If the next time is after the right endpoint, stop
+      // sampling and determine if the path is valid
+      if (cur_time[0] > t1)
+      {
 
-         // Determine if the path is valid
-         if(cur_state[0] == b) {
-           valid_path = true;
+        // Stop forward sampling
+        keep_going = false;
 
-         } else {
-           valid_path = false;
-           time_vec.clear();
-           state_vec.clear();
-         }
+        // Determine if the path is valid
+        if (cur_state[0] == b)
+        {
+          valid_path = true;
+        }
+        else
+        {
+          valid_path = false;
+          time_vec.clear();
+          state_vec.clear();
+        }
 
-         // If the next transition occurs before the right
-         // endpoint, sample the next state
-       } else {
-         // sample the next state
-         cur_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
+        // If the next transition occurs before the right
+        // endpoint, sample the next state
+      }
+      else
+      {
+        // sample the next state
+        Rcpp::IntegerVector pot_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
 
-         // update the rate of transition out of the new state
-         // and update the state transition probabilities
-         cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
-         state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
+        // update the rate of transition out of the new state
+        double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
-         // update the state and time vectors
-         time_vec.push_back(cur_time[0]);
-         state_vec.push_back(cur_state[0]);
-       }
-     }
-   }
+        // if actual switch, update time, state, rate and transition probabilities
+        if (Rcpp::runif(1)[0] < (pot_rate / k))
+        {
+          state_probs = pmax(Q(cur_state[0] - 1, _), 0);
+          cur_state = pot_state;
+          cur_rate = pot_rate;
 
-   // Add the time and state at the right endpoint
-   if(c == limit || (c == 1 && time_vec.size() == 0)) {
-     // send auto reject ( fill path with -1s)
-     time_vec.clear();
-     state_vec.clear();
-     time_vec.push_back(-1);
-     state_vec.push_back(-1);
-   } else{
-     // Add the time and state at the right endpoint
-     time_vec.push_back(t1);
-     state_vec.push_back(b);
-   }
+          // Insert the next state and transition time into the
+          // appropriate vectors
+          time_vec.push_back(cur_time[0]);
+          state_vec.push_back(cur_state[0]);
+        }
+      }
+    }
+  }
 
-   // Collect the sequences of states and times into a matrix
-   arma::mat path(time_vec.size(), 2);;
-   path.col(0) = arma::conv_to<arma::colvec>::from(time_vec);
-   path.col(1) = arma::conv_to<arma::colvec>::from(state_vec);
+  // Add the time and state at the right endpoint
+  if (c == limit || (c == 1 && time_vec.size() == 0))
+  {
+    // send auto reject ( fill path with -1s)
+    time_vec.clear();
+    state_vec.clear();
+    time_vec.push_back(-1);
+    state_vec.push_back(-1);
+  }
+  else
+  {
+    // Add the time and state at the right endpoint
+    time_vec.push_back(t1);
+    state_vec.push_back(b);
+  }
 
-   return path;
- }
+  // Collect the sequences of states and times into a matrix
+  arma::mat path(time_vec.size(), 2);
+  path.col(0) = arma::conv_to<arma::colvec>::from(time_vec);
+  path.col(1) = arma::conv_to<arma::colvec>::from(state_vec);
 
+  return path;
+}
 
 //' Simulate a sample path from an endpoint conditioned CTMC by modified
 //' rejection sampling.
@@ -181,7 +210,8 @@ using namespace Rcpp;
 //'
 //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model) {
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat &Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model)
+{
   const int limit = 1000;
 
   // initialize vector of states
@@ -204,7 +234,8 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
   // Sample paths until a valid path has been obtained
   int c = 0;
   // TODO: how to memoize getQ?
-  while(valid_path == false && c < limit) {
+  while (valid_path == false && c < limit)
+  {
     c++;
     // Set boolean to initiate forward sampling
     bool keep_going = true;
@@ -222,11 +253,15 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     Rcpp::IntegerVector cur_state(1, a);
     double cur_rate;
     Rcpp::NumericMatrix Q;
-    try {
+    try
+    {
       Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
       cur_rate = -Q(cur_state[0] - 1, cur_state[0] - 1);
-    } catch(std::string e) { // catch sst errors
-      if (e.compare("sst") == 0) {
+    }
+    catch (std::string e)
+    { // catch sst errors
+      if (e.compare("sst") == 0)
+      {
         valid_path = false;
         time_vec.clear();
         state_vec.clear();
@@ -239,20 +274,21 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     }
 
     // get the state transition probabilities
-    Rcpp::NumericVector state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
+    Rcpp::NumericVector state_probs = pmax(Q(cur_state[0] - 1, _), 0);
 
     // If the beginning and end states don't match, sample first transition
-    if(a != b) {
+    if (a != b)
+    {
 
-      // sample the first transition time
-      cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1-t0) * k))) / k;
+      // sample the first potential transition time
+      Rcpp::NumericVector pot_time = cur_time + -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1 - t0) * k))) / k;
 
       // sample the next state
-      cur_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
+      Rcpp::IntegerVector pot_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
 
       // predict positions from start and end, with new intermediate transition time
       arma::mat data = {{lng0, lat0, t0, 0, 1.0 * a},
-                        {NA_REAL, NA_REAL, cur_time[0], 0, 1.0 * cur_state[0]},
+                        {NA_REAL, NA_REAL, pot_time[0], 0, 1.0 * pot_state[0]},
                         {lng1, lat1, t1, 0, 1.0 * b}}; //{x, y, time, ID, state}
       arma::mat newHmat(3, 4);
       newHmat.row(0) = Hmat.row(0);
@@ -264,17 +300,40 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       Rcpp::NumericVector y = pred["y"];
       Rcpp::NumericVector vx = pred["vx"];
       Rcpp::NumericVector vy = pred["vy"];
-      cur_lng = x[1];
-      cur_lat = y[1];
-
+      Rcpp::NumericVector pot_lng = x[1];
+      Rcpp::NumericVector pot_lat = y[1];
 
       // update the rate of transition out of the new state
       // and update the state transition probabilities
-      try {
-        Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
-        cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
-      } catch(std::string e) { // catch sst errors
-        if (e.compare("sst") == 0) {
+      try
+      {
+        Q = getQ(nbStates, alpha, t_alpha, pot_time[0], pot_lng[0], pot_lat[0], group, model);
+        double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
+
+        // if actual switch, update time, state, rate and transition probabilities
+        if (Rcpp::runif(1)[0] < (pot_rate / k))
+        {
+          state_probs = pmax(Q(cur_state[0] - 1, _), 0);
+          cur_time = pot_time;
+          cur_state = pot_state;
+          cur_rate = pot_rate;
+          cur_lng = pot_lng;
+          cur_lat = pot_lat;
+
+          // Insert the next state and transition time into the
+          // appropriate vectors
+          time_vec.push_back(cur_time[0]);
+          state_vec.push_back(cur_state[0]);
+          lng_vec.push_back(cur_lng[0]);
+          lat_vec.push_back(cur_lat[0]);
+          vx_vec.push_back(vx[1]);
+          vy_vec.push_back(vy[1]);
+        }
+      }
+      catch (std::string e)
+      { // catch sst errors
+        if (e.compare("sst") == 0)
+        {
           valid_path = false;
           time_vec.clear();
           state_vec.clear();
@@ -285,30 +344,25 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
           break;
         }
       }
-      state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
-
-      // Insert the next state and transition time into the
-      // appropriate vectors
-      time_vec.push_back(cur_time[0]);
-      state_vec.push_back(cur_state[0]);
-      lng_vec.push_back(cur_lng[0]);
-      lat_vec.push_back(cur_lat[0]);
-      vx_vec.push_back(vx[1]);
-      vy_vec.push_back(vy[1]);
     }
 
     // Proceed with forward sampling algorithm
-    while(keep_going == true) {
+    while (keep_going == true)
+    {
 
       // check if the state is an absorbing state
-      if(is_true(all(state_probs == 0))) {
+      if (is_true(all(state_probs == 0)))
+      {
 
         // stop sampling forward
         keep_going = false;
 
-        if(cur_state[0] == b) {
+        if (cur_state[0] == b)
+        {
           valid_path = true;
-        } else {
+        }
+        else
+        {
           valid_path = false;
           time_vec.clear();
           state_vec.clear();
@@ -322,20 +376,23 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       }
 
       // Sample the next transition time
-      cur_time += Rcpp::rexp(1, cur_rate);
+      Rcpp::NumericVector pot_time = cur_time + Rcpp::rexp(1, cur_rate);
 
       // If the next time is after the right endpoint, stop
       // sampling and determine if the path is valid
-      if(cur_time[0] > t1) {
+      if (pot_time[0] > t1)
+      {
 
         // Stop forward sampling
         keep_going = false;
 
         // Determine if the path is valid
-        if(cur_state[0] == b) {
+        if (cur_state[0] == b)
+        {
           valid_path = true;
-
-        } else {
+        }
+        else
+        {
           valid_path = false;
           time_vec.clear();
           state_vec.clear();
@@ -347,20 +404,23 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
 
         // If the next transition occurs before the right
         // endpoint, sample the next state
-      } else {
+      }
+      else
+      {
         // sample the next state
-        cur_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
+        Rcpp::IntegerVector pot_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
 
         // predict positions from start and end, with new intermediate transition time
         arma::mat data(time_vec.size() + 2, 5);
         arma::mat newHmat(time_vec.size() + 2, 4);
         data.row(0) = {lng0, lat0, t0, 0, 1.0 * a};
         newHmat.row(0) = Hmat.row(0);
-        for(unsigned i = 1; i < time_vec.size(); i++) {
-          data.row(i) = { lng_vec[i], lat_vec[i], time_vec[i], 0, 1.0 * state_vec[i]};
+        for (unsigned i = 1; i < time_vec.size(); i++)
+        {
+          data.row(i) = {lng_vec[i], lat_vec[i], time_vec[i], 0, 1.0 * state_vec[i]};
           newHmat.row(i) = {vx_vec[i], vy_vec[i], 0, 0};
         }
-        data.row(time_vec.size()) = {NA_REAL, NA_REAL, cur_time[0], 0, 1.0 * cur_state[0]};
+        data.row(time_vec.size()) = {NA_REAL, NA_REAL, pot_time[0], 0, 1.0 * pot_state[0]};
         newHmat.row(time_vec.size()) = {NA_REAL, NA_REAL, NA_REAL, NA_REAL};
         newHmat.row(time_vec.size() + 1) = Hmat.row(1);
         data.row(time_vec.size() + 1) = {lng1, lat1, t1, 0, 1.0 * b};
@@ -370,16 +430,40 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         Rcpp::NumericVector y = pred["y"];
         Rcpp::NumericVector vx = pred["vx"];
         Rcpp::NumericVector vy = pred["vy"];
-        cur_lng = x[time_vec.size() + 1];
-        cur_lat = y[time_vec.size() + 1];
+        Rcpp::NumericVector pot_lng = x[time_vec.size() + 1];
+        Rcpp::NumericVector pot_lat = y[time_vec.size() + 1];
 
         // update the rate of transition out of the new state
         // and update the state transition probabilities
-        try {
-          Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
-          cur_rate  = -Q(cur_state[0] - 1, cur_state[0] - 1);
-        } catch(std::string e) { // catch sst errors
-          if (e.compare("sst") == 0) {
+        try
+        {
+          Q = getQ(nbStates, alpha, t_alpha, pot_time[0], pot_lng[0], pot_lat[0], group, model);
+          double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
+
+          // if actual switch, update time, state, rate and transition probabilities
+          if (Rcpp::runif(1)[0] < (pot_rate / k))
+          {
+            state_probs = pmax(Q(cur_state[0] - 1, _), 0);
+            cur_time = pot_time;
+            cur_state = pot_state;
+            cur_rate = pot_rate;
+            cur_lng = pot_lng;
+            cur_lat = pot_lat;
+
+            // Insert the next state and transition time into the
+            // appropriate vectors
+            time_vec.push_back(cur_time[0]);
+            state_vec.push_back(cur_state[0]);
+            lng_vec.push_back(cur_lng[0]);
+            lat_vec.push_back(cur_lat[0]);
+            vx_vec.push_back(vx[1]);
+            vy_vec.push_back(vy[1]);
+          }
+        }
+        catch (std::string e)
+        { // catch sst errors
+          if (e.compare("sst") == 0)
+          {
             valid_path = false;
             time_vec.clear();
             state_vec.clear();
@@ -390,23 +474,18 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
             break;
           }
         }
-        state_probs = pmax(Q(cur_state[0] - 1, _ ), 0);
-        // update the state and time vectors
-        time_vec.push_back(cur_time[0]);
-        state_vec.push_back(cur_state[0]);
-        lng_vec.push_back(cur_lng[0]);
-        lat_vec.push_back(cur_lat[0]);
-        vx_vec.push_back(vx[time_vec.size() + 1]);
-        vy_vec.push_back(vy[time_vec.size() + 1]);
       }
     }
   }
 
-  if(c == limit || (c == 1 && time_vec.size() == 0)) {
+  if (c == limit || (c == 1 && time_vec.size() == 0))
+  {
     // send auto reject ( fill path with -1s)
     time_vec.push_back(-1);
     state_vec.push_back(-1);
-  } else{
+  }
+  else
+  {
     // Add the time and state at the right endpoint
     time_vec.push_back(t1);
     state_vec.push_back(b);
