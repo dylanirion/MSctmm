@@ -674,8 +674,6 @@ runMCMC <- function(track,
         newRateParams <- NULL
       }
 
-      
-
       if (!is.null(newRateParams) && any(!constraintsFromDensityArgs(newRateParams[[2]], ratePriorArgs))) {
         acceptProb <- 0
       } else {
