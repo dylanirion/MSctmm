@@ -281,14 +281,14 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     {
 
       // sample the first potential transition time
-      Rcpp::NumericVector pot_time = cur_time + -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1 - t0) * k))) / k;
+      cur_time += -log(1 - Rcpp::runif(1, 0, 1) * (1 - exp(-(t1 - t0) * k))) / k;
 
       // sample the next state
       Rcpp::IntegerVector pot_state = Rcpp::RcppArmadillo::sample(states, 1, false, state_probs);
 
       // predict positions from start and end, with new intermediate transition time
       arma::mat data = {{lng0, lat0, t0, 0, 1.0 * a},
-                        {NA_REAL, NA_REAL, pot_time[0], 0, 1.0 * pot_state[0]},
+                        {NA_REAL, NA_REAL, cur_time[0], 0, 1.0 * pot_state[0]},
                         {lng1, lat1, t1, 0, 1.0 * b}}; //{x, y, time, ID, state}
       arma::mat newHmat(3, 4);
       newHmat.row(0) = Hmat.row(0);
@@ -307,14 +307,13 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       // and update the state transition probabilities
       try
       {
-        Q = getQ(nbStates, alpha, t_alpha, pot_time[0], pot_lng[0], pot_lat[0], group, model);
+        Q = getQ(nbStates, alpha, t_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
         double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
         // if actual switch, update time, state, rate and transition probabilities
         if (Rcpp::runif(1)[0] < (pot_rate / k))
         {
           state_probs = pmax(Q(cur_state[0] - 1, _), 0);
-          cur_time = pot_time;
           cur_state = pot_state;
           cur_rate = pot_rate;
           cur_lng = pot_lng;
@@ -376,11 +375,11 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       }
 
       // Sample the next transition time
-      Rcpp::NumericVector pot_time = cur_time + Rcpp::rexp(1, cur_rate);
+      cur_time += Rcpp::rexp(1, cur_rate);
 
       // If the next time is after the right endpoint, stop
       // sampling and determine if the path is valid
-      if (pot_time[0] > t1)
+      if (cur_time[0] > t1)
       {
 
         // Stop forward sampling
@@ -420,7 +419,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
           data.row(i) = {lng_vec[i], lat_vec[i], time_vec[i], 0, 1.0 * state_vec[i]};
           newHmat.row(i) = {vx_vec[i], vy_vec[i], 0, 0};
         }
-        data.row(time_vec.size()) = {NA_REAL, NA_REAL, pot_time[0], 0, 1.0 * pot_state[0]};
+        data.row(time_vec.size()) = {NA_REAL, NA_REAL, cur_time[0], 0, 1.0 * pot_state[0]};
         newHmat.row(time_vec.size()) = {NA_REAL, NA_REAL, NA_REAL, NA_REAL};
         newHmat.row(time_vec.size() + 1) = Hmat.row(1);
         data.row(time_vec.size() + 1) = {lng1, lat1, t1, 0, 1.0 * b};
@@ -437,14 +436,13 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         // and update the state transition probabilities
         try
         {
-          Q = getQ(nbStates, alpha, t_alpha, pot_time[0], pot_lng[0], pot_lat[0], group, model);
+          Q = getQ(nbStates, alpha, t_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
           double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
           // if actual switch, update time, state, rate and transition probabilities
           if (Rcpp::runif(1)[0] < (pot_rate / k))
           {
             state_probs = pmax(Q(cur_state[0] - 1, _), 0);
-            cur_time = pot_time;
             cur_state = pot_state;
             cur_rate = pot_rate;
             cur_lng = pot_lng;
