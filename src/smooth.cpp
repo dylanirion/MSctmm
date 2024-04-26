@@ -119,7 +119,8 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
       mat ZPforZt = Z * PforZt;
       ZPforZt.replace(datum::nan, 0);
       mat F = ZPforZt + H; // residual covariance ( sRes, Sk )
-      iF.slice(i) = F.i();
+      // iF.slice(i) = F.i();
+      iF.slice(i) = PDsolve(F);
 
       // Kalman gain
       K = PforZt * iF.slice(i);
@@ -185,7 +186,8 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
   } // end filter iterations
 
   // backward smoother
-  for (uword j = aest.n_rows - 2; j >= 0; j--)
+
+  for (uword j = aest.n_rows - 1; j--> 0;)
   {
     if (ID(j) == ID(j + 1))
     {

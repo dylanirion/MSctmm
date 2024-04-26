@@ -46,11 +46,11 @@ namespace MSctmm {
         return Rcpp::as<arma::mat >(rcpp_result_gen);
     }
 
-    inline arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec rateparam, const String model) {
+    inline arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, arma::vec rateparam, const String model) {
         typedef SEXP(*Ptr_sample_path_mr2)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_sample_path_mr2 p_sample_path_mr2 = NULL;
         if (p_sample_path_mr2 == NULL) {
-            validateSignature("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const String)");
+            validateSignature("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,arma::vec,const String)");
             p_sample_path_mr2 = (Ptr_sample_path_mr2)R_GetCCallable("MSctmm", "_MSctmm_sample_path_mr2");
         }
         RObject rcpp_result_gen;

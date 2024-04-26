@@ -86,7 +86,7 @@ RcppExport SEXP _MSctmm_sample_path_mr(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP
     return rcpp_result_gen;
 }
 // sample_path_mr2
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec rateparam, const String model);
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, arma::vec rateparam, const String model);
 static SEXP _MSctmm_sample_path_mr2_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP groupSEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP rateparamSEXP, SEXP modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -104,7 +104,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec >::type param(paramSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type mu(muSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type Hmat(HmatSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type rateparam(rateparamSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type rateparam(rateparamSEXP);
     Rcpp::traits::input_parameter< const String >::type model(modelSEXP);
     rcpp_result_gen = Rcpp::wrap(sample_path_mr2(a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, rateparam, model));
     return rcpp_result_gen;
@@ -182,7 +182,7 @@ static int _MSctmm_RcppExport_validate(const char* sig) {
     static std::set<std::string> signatures;
     if (signatures.empty()) {
         signatures.insert("arma::mat(*sample_path_mr)(const int,const int,const double,const double,const Rcpp::NumericMatrix&,const double)");
-        signatures.insert("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,const arma::vec,const String)");
+        signatures.insert("arma::mat(*sample_path_mr2)(const int,const int,const double,const double,const double,const double,const double,const double,const int,const double,const int,const arma::vec,const arma::vec,const arma::mat&,arma::vec,const String)");
     }
     return signatures.find(sig) != signatures.end();
 }

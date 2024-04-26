@@ -210,7 +210,7 @@ arma::mat sample_path_mr(const int a, const int b, const double t0, const double
 //'
 //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat &Hmat, const arma::vec rateparam, const String model)
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat &Hmat, arma::vec rateparam, const String model)
 {
   const int limit = 1000;
 
@@ -300,8 +300,8 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       Rcpp::NumericVector y = pred["y"];
       Rcpp::NumericVector vx = pred["vx"];
       Rcpp::NumericVector vy = pred["vy"];
-      Rcpp::NumericVector pot_lng = x[1];
-      Rcpp::NumericVector pot_lat = y[1];
+      Rcpp::NumericVector pot_lng(1, x[1]);
+      Rcpp::NumericVector pot_lat(1, y[1]);
 
       // update the rate of transition out of the new state
       // and update the state transition probabilities
@@ -348,7 +348,6 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     // Proceed with forward sampling algorithm
     while (keep_going == true)
     {
-
       // check if the state is an absorbing state
       if (is_true(all(state_probs == 0)))
       {
@@ -370,7 +369,6 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
           vx_vec.clear();
           vy_vec.clear();
         }
-
         break;
       }
 
@@ -429,8 +427,8 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         Rcpp::NumericVector y = pred["y"];
         Rcpp::NumericVector vx = pred["vx"];
         Rcpp::NumericVector vy = pred["vy"];
-        Rcpp::NumericVector pot_lng = x[time_vec.size() + 1];
-        Rcpp::NumericVector pot_lat = y[time_vec.size() + 1];
+        Rcpp::NumericVector pot_lng(1, x[time_vec.size() + 1]);
+        Rcpp::NumericVector pot_lat(1, y[time_vec.size() + 1]);
 
         // update the rate of transition out of the new state
         // and update the state transition probabilities
