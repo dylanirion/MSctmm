@@ -15,20 +15,20 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // getQ
-Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha, const time_t time, const double lng, const double lat, const int group, const String model);
-RcppExport SEXP _MSctmm_getQ(SEXP nbStatesSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP timeSEXP, SEXP lngSEXP, SEXP latSEXP, SEXP groupSEXP, SEXP modelSEXP) {
+Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha, const time_t time, const double lng, const double lat, const int group, const String model);
+RcppExport SEXP _MSctmm_getQ(SEXP nbStatesSEXP, SEXP alphaSEXP, SEXP x_alphaSEXP, SEXP timeSEXP, SEXP lngSEXP, SEXP latSEXP, SEXP groupSEXP, SEXP modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const int >::type nbStates(nbStatesSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type t_alpha(t_alphaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type x_alpha(x_alphaSEXP);
     Rcpp::traits::input_parameter< const time_t >::type time(timeSEXP);
     Rcpp::traits::input_parameter< const double >::type lng(lngSEXP);
     Rcpp::traits::input_parameter< const double >::type lat(latSEXP);
     Rcpp::traits::input_parameter< const int >::type group(groupSEXP);
     Rcpp::traits::input_parameter< const String >::type model(modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(getQ(nbStates, alpha, t_alpha, time, lng, lat, group, model));
+    rcpp_result_gen = Rcpp::wrap(getQ(nbStates, alpha, x_alpha, time, lng, lat, group, model));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -87,8 +87,8 @@ RcppExport SEXP _MSctmm_sample_path_mr(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP
     return rcpp_result_gen;
 }
 // sample_path_mr2
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model);
-static SEXP _MSctmm_sample_path_mr2_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP groupSEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat& Hmat, const arma::vec alpha, const arma::vec x_alpha, const String model);
+static SEXP _MSctmm_sample_path_mr2_try(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP groupSEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP x_alphaSEXP, SEXP modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const int >::type a(aSEXP);
@@ -106,17 +106,17 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec >::type mu(muSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type Hmat(HmatSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type t_alpha(t_alphaSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type x_alpha(x_alphaSEXP);
     Rcpp::traits::input_parameter< const String >::type model(modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_path_mr2(a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, alpha, t_alpha, model));
+    rcpp_result_gen = Rcpp::wrap(sample_path_mr2(a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, alpha, x_alpha, model));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP groupSEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP t_alphaSEXP, SEXP modelSEXP) {
+RcppExport SEXP _MSctmm_sample_path_mr2(SEXP aSEXP, SEXP bSEXP, SEXP t0SEXP, SEXP t1SEXP, SEXP lng0SEXP, SEXP lat0SEXP, SEXP lng1SEXP, SEXP lat1SEXP, SEXP groupSEXP, SEXP kSEXP, SEXP nbStatesSEXP, SEXP paramSEXP, SEXP muSEXP, SEXP HmatSEXP, SEXP alphaSEXP, SEXP x_alphaSEXP, SEXP modelSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr2_try(aSEXP, bSEXP, t0SEXP, t1SEXP, lng0SEXP, lat0SEXP, lng1SEXP, lat1SEXP, groupSEXP, kSEXP, nbStatesSEXP, paramSEXP, muSEXP, HmatSEXP, alphaSEXP, t_alphaSEXP, modelSEXP));
+        rcpp_result_gen = PROTECT(_MSctmm_sample_path_mr2_try(aSEXP, bSEXP, t0SEXP, t1SEXP, lng0SEXP, lat0SEXP, lng1SEXP, lat1SEXP, groupSEXP, kSEXP, nbStatesSEXP, paramSEXP, muSEXP, HmatSEXP, alphaSEXP, x_alphaSEXP, modelSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {

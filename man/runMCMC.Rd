@@ -8,6 +8,7 @@ runMCMC(
   track,
   nbStates,
   nbIter,
+  burnin,
   inits,
   fixed,
   priors,
@@ -35,7 +36,7 @@ runMCMC(
 \item \code{Q}:
 \item \code{state}: vector. Initial state sequence, length \code{nrow(track)}
 \item \code{alpha}: vector. Length dependent on model choice
-\item \code{t_alpha}: vector. Length dependent on model choice
+\item \code{x_alpha}: vector. Length dependent on model choice
 }}
 
 \item{fixed}{list of fixed parameters:
@@ -52,10 +53,8 @@ Length \code{nbStates} for isotropic covariance, or \code{3 * nbStates} for anis
 
 \item{priors}{list. Parameters of prior distributions, with components:
 \itemize{
-\item \code{mean}: vector. Means for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-of length \code{5 * nbStates} for movement parameters or \code{5 * nbStates +   length(alpha)} when estimating rate parameters \code{alpha}, \code{t_alpha} by MH
-\item \code{sd}: vector. Standard deviations for normal priors on movement parameters and Metropolis-Hastings rate parameters,
-of length \code{5 * nbStates} for movement parameters or \code{5 * nbStates +   length(alpha)} when estimating rate parameters \code{alpha}, \code{t_alpha} by MH
+\item \code{func}: list of distribution function names, of length \code{5 * nbStates} or \code{7 * nbStates} for movement parameters + \code{length(alpha)} when estimating rate parameters \code{alpha}, \code{x_alpha} by MH
+\item \code{args}: list of list containg function args for distribution functions, of length \code{5 * nbStates} or \code{7 * nbStates} for movement parameters + \code{length(alpha)} when estimating rate parameters \code{alpha}, \code{x_alpha} by MH
 \item \code{shape}: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
 \item \code{rate}: vector. Rates of gamma priors for the transition rates when Gibbs sampling
 \item \code{con}: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
@@ -65,7 +64,7 @@ of length \code{5 * nbStates} for movement parameters or \code{5 * nbStates +   
 \itemize{
 \item \code{S}: matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is \verb{SS'}.
 Dimensions \verb{(5 * nbStates, 5 * nbStates)} when not modelling rate
-parameters (\code{model} is \code{NA}) and \verb{(5 * nbStates + length(alpha) +   length(t_alpha), 5 * nbStates + length(alpha) + length(t_alpha))}
+parameters (\code{model} is \code{NA}) and \verb{(5 * nbStates + length(alpha) +   length(x_alpha), 5 * nbStates + length(alpha) + length(x_alpha))}
 otherwise.
 \item \code{updateLim}: vector. Two values: min and max length of updated state sequence
 \item \code{updateProbs}: vector. Probabilities for each element of \code{updateLim[1]:updateLim[2]} (if \code{NULL},
@@ -96,6 +95,7 @@ Run MCMC iterations
 }
 \examples{
 \dontrun{
+
 }
 
 }

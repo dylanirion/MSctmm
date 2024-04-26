@@ -210,7 +210,7 @@ arma::mat sample_path_mr(const int a, const int b, const double t0, const double
 //'
 //' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
 // [[Rcpp::export]]
-arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat &Hmat, const arma::vec alpha, const arma::vec t_alpha, const String model)
+arma::mat sample_path_mr2(const int a, const int b, const double t0, const double t1, const double lng0, const double lat0, const double lng1, const double lat1, const int group, const double k, const int nbStates, const arma::vec param, const arma::vec mu, const arma::mat &Hmat, const arma::vec alpha, const arma::vec x_alpha, const String model)
 {
   const int limit = 1000;
 
@@ -255,7 +255,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
     Rcpp::NumericMatrix Q;
     try
     {
-      Q = getQ(nbStates, alpha, t_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
+      Q = getQ(nbStates, alpha, x_alpha, cur_time[0], cur_lng[0], cur_lat[0], group, model);
       cur_rate = -Q(cur_state[0] - 1, cur_state[0] - 1);
     }
     catch (std::string e)
@@ -307,7 +307,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
       // and update the state transition probabilities
       try
       {
-        Q = getQ(nbStates, alpha, t_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
+        Q = getQ(nbStates, alpha, x_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
         double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
         // if actual switch, update time, state, rate and transition probabilities
@@ -436,7 +436,7 @@ arma::mat sample_path_mr2(const int a, const int b, const double t0, const doubl
         // and update the state transition probabilities
         try
         {
-          Q = getQ(nbStates, alpha, t_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
+          Q = getQ(nbStates, alpha, x_alpha, cur_time[0], pot_lng[0], pot_lat[0], group, model);
           double pot_rate = -Q(pot_state[0] - 1, pot_state[0] - 1);
 
           // if actual switch, update time, state, rate and transition probabilities

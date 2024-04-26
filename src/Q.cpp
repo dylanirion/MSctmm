@@ -25,7 +25,7 @@ Rcpp::Function f = rerddap["griddap"];
 
 // Make Q matrix
 // [[Rcpp::export]]
-Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha, const time_t time, const double lng, const double lat, const int group, const String model) {
+Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha, const time_t time, const double lng, const double lat, const int group, const String model) {
   struct tm t = *localtime(&time);
   int yday = t.tm_yday;
 
@@ -36,31 +36,66 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
   mat Q(nbStates, nbStates, fill::ones);
   Q.diag() = Q.diag() * -1;
 
-  if (model == "time_out_time_in") {
-    // time-varying rate in and out
-    t_alpha(0) = clamp(t_alpha(0), 0, 365);
-    t_alpha(1) = clamp(t_alpha(1), 0, 365);
-    //FB -> trans
-    Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (yday - t_alpha(0))));
+  if (model == "null_model") {
+     //FB -> trans
+    Q(0,4) = alpha(0);
     Q(0,0) = Q(0,4) * -1;
     //GB -> trans
-    Q(1,4) = alpha(0)/(1+exp(-alpha(0) * (yday - t_alpha(0))));
+    Q(1,4) = alpha(1);
     Q(1,1) = Q(1,4) * -1;
     //MB -> trans
-    Q(2,4) = alpha(0)/(1+exp(-alpha(0) * (yday - t_alpha(0))));
+    Q(2,4) = alpha(2);
     Q(2,2) = Q(2,4) * -1;
     //AB -> trans
-    Q(3,4) = alpha(0)/(1+exp(-alpha(0) * (yday - t_alpha(0))));
+    Q(3,4) = alpha(3);
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha(1)/(1+exp(-alpha(1) * (yday - t_alpha(1))))/4;
+    Q(4,0) = alpha(4);
     // trans -> GB
-    Q(4,1) = alpha(1)/(1+exp(-alpha(1) * (yday - t_alpha(1))))/4;
+    Q(4,1) = alpha(5);
     // trans -> MB
-    Q(4,2) = alpha(1)/(1+exp(-alpha(1) * (yday - t_alpha(1))))/4;
+    Q(4,2) = alpha(6);
     // trans -> AB
-    Q(4,3) = alpha(1)/(1+exp(-alpha(1) * (yday - t_alpha(1))))/4;
-    Q(4,4) = -(alpha(1)/(1+exp(-alpha(1) * (yday - t_alpha(1)))));
+    Q(4,3) = alpha(7);
+    Q(4,4) = (Q(4,0) + Q(4,1) + Q(4,2) + Q(4,3)) * -1;
+    //Impossible transitions
+    Q(0,1) = 0; // This might actually be possible (GB->FB)
+    Q(0,2) = 0;
+    Q(0,3) = 0;
+    Q(1,0) = 0; // This might actually be possible (FB->GB)
+    Q(1,2) = 0;
+    Q(1,3) = 0;
+    Q(2,0) = 0;
+    Q(2,1) = 0;
+    Q(2,3) = 0;
+    Q(3,0) = 0;
+    Q(3,1) = 0;
+    Q(3,2) = 0;
+  } else if (model == "time_out_time_in") {
+    // time-varying rate in and out
+    x_alpha(0) = clamp(x_alpha(0), 0, 365);
+    x_alpha(1) = clamp(x_alpha(1), 0, 365);
+    //FB -> trans
+    Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (yday - x_alpha(0))));
+    Q(0,0) = Q(0,4) * -1;
+    //GB -> trans
+    Q(1,4) = alpha(0)/(1+exp(-alpha(0) * (yday - x_alpha(0))));
+    Q(1,1) = Q(1,4) * -1;
+    //MB -> trans
+    Q(2,4) = alpha(0)/(1+exp(-alpha(0) * (yday - x_alpha(0))));
+    Q(2,2) = Q(2,4) * -1;
+    //AB -> trans
+    Q(3,4) = alpha(0)/(1+exp(-alpha(0) * (yday - x_alpha(0))));
+    Q(3,3) = Q(3,4) * -1;
+    // trans -> FB
+    Q(4,0) = alpha(1)/(1+exp(-alpha(1) * (yday - x_alpha(1))))/4;
+    // trans -> GB
+    Q(4,1) = alpha(1)/(1+exp(-alpha(1) * (yday - x_alpha(1))))/4;
+    // trans -> MB
+    Q(4,2) = alpha(1)/(1+exp(-alpha(1) * (yday - x_alpha(1))))/4;
+    // trans -> AB
+    Q(4,3) = alpha(1)/(1+exp(-alpha(1) * (yday - x_alpha(1))))/4;
+    Q(4,4) = -(alpha(1)/(1+exp(-alpha(1) * (yday - x_alpha(1)))));
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
     Q(0,2) = 0;
@@ -77,30 +112,30 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
   } else if (model == "time_out_time_in_group") {
     // time-varying rate in and out, with n group-specific rates (first n rates are out, next n rates are in)
     // (this actually functions identically to above)
-    for(unsigned i = 0; i < t_alpha.size(); i++) {
-      t_alpha(i) = clamp(t_alpha(i), 0, 365);
+    for(unsigned i = 0; i < x_alpha.size(); i++) {
+      x_alpha(i) = clamp(x_alpha(i), 0, 365);
     }
     //FB -> trans
-    Q(0,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - t_alpha(group - 1))));
+    Q(0,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(0,0) = Q(0,4) * -1;
     //GB -> trans
-    Q(1,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - t_alpha(group - 1))));
+    Q(1,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(1,1) = Q(1,4) * -1;
     //MB -> trans
-    Q(2,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - t_alpha(group - 1))));
+    Q(2,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(2,2) = Q(2,4) * -1;
     //AB -> trans
-    Q(3,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - t_alpha(group - 1))));
+    Q(3,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha((t_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((t_alpha.size() / 2) + (group - 1)) * (yday - t_alpha((t_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,0) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
     // trans -> GB
-    Q(4,1) = alpha((t_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((t_alpha.size() / 2) + (group - 1)) * (yday - t_alpha((t_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,1) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
     // trans -> MB
-    Q(4,2) = alpha((t_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((t_alpha.size() / 2) + (group - 1)) * (yday - t_alpha((t_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,2) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
     // trans -> AB
-    Q(4,3) = alpha((t_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((t_alpha.size() / 2) + (group - 1)) * (yday - t_alpha((t_alpha.size() / 2) + (group - 1)))))/4;
-    Q(4,4) = -(alpha((t_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((t_alpha.size() / 2) + (group - 1)) * (yday - t_alpha((t_alpha.size() / 2) + (group - 1))))));
+    Q(4,3) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,4) = -(alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1))))));
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
     Q(0,2) = 0;
@@ -159,26 +194,26 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec t_alpha,
     Rcout << "\33[2K\r" << time_string << " Q" << "(" << i << ") " << (round(output_coords.xy.x * 100) / 100) << ", " << (round(output_coords.xy.y * 100) / 100) << ": " << (not_valid ? "not valid" : "valid");
     // sst-varying rate in and out
     //FB -> trans
-    Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (sst - t_alpha(0))));
+    Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (sst - x_alpha(0))));
     Q(0,0) = Q(0,4) * -1;
     //GB -> trans
-    Q(1,4) = alpha(0)/(1+exp(-alpha(0) * (sst - t_alpha(0))));
+    Q(1,4) = alpha(0)/(1+exp(-alpha(0) * (sst - x_alpha(0))));
     Q(1,1) = Q(1,4) * -1;
     //MB -> trans
-    Q(2,4) = alpha(0)/(1+exp(-alpha(0) * (sst - t_alpha(0))));
+    Q(2,4) = alpha(0)/(1+exp(-alpha(0) * (sst - x_alpha(0))));
     Q(2,2) = Q(2,4) * -1;
     //AB -> trans
-    Q(3,4) = alpha(0)/(1+exp(-alpha(0) * (sst - t_alpha(0))));
+    Q(3,4) = alpha(0)/(1+exp(-alpha(0) * (sst - x_alpha(0))));
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha(1)/(1+exp(-alpha(1) * (sst - t_alpha(1))))/4;
+    Q(4,0) = alpha(1)/(1+exp(-alpha(1) * (sst - x_alpha(1))))/4;
     // trans -> GB
-    Q(4,1) = alpha(1)/(1+exp(-alpha(1) * (sst - t_alpha(1))))/4;
+    Q(4,1) = alpha(1)/(1+exp(-alpha(1) * (sst - x_alpha(1))))/4;
     // trans -> MB
-    Q(4,2) = alpha(1)/(1+exp(-alpha(1) * (sst - t_alpha(1))))/4;
+    Q(4,2) = alpha(1)/(1+exp(-alpha(1) * (sst - x_alpha(1))))/4;
     // trans -> AB
-    Q(4,3) = alpha(1)/(1+exp(-alpha(1) * (sst - t_alpha(1))))/4;
-    Q(4,4) = -(alpha(1)/(1+exp(-alpha(1) * (sst - t_alpha(1)))));
+    Q(4,3) = alpha(1)/(1+exp(-alpha(1) * (sst - x_alpha(1))))/4;
+    Q(4,4) = -(alpha(1)/(1+exp(-alpha(1) * (sst - x_alpha(1)))));
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
     Q(0,2) = 0;
