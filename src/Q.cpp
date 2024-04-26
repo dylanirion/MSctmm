@@ -22,10 +22,11 @@ Rcpp::Environment rerddap = Rcpp::Environment::namespace_env("rerddap");
 //SEXP tmp = c(Rcpp::Named("full_path", "/home/dylan/rerddap/"));
 Rcpp::Function f = rerddap["griddap"];
 
+//TODO: this should all actually be dependency injection, getQ wraps some function provided at runtime
 
 // Make Q matrix
 // [[Rcpp::export]]
-Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha, const time_t time, const double lng, const double lat, const int group, const String model) {
+Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t time, const double lng, const double lat, const int group, const String model) {
   struct tm t = *localtime(&time);
   int yday = t.tm_yday;
 
@@ -37,6 +38,7 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha,
   Q.diag() = Q.diag() * -1;
 
   if (model == "null_model") {
+    arma::vec alpha = rateparam;
      //FB -> trans
     Q(0,4) = alpha(0);
     Q(0,0) = Q(0,4) * -1;
@@ -73,6 +75,8 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha,
     Q(3,2) = 0;
   } else if (model == "time_out_time_in") {
     // time-varying rate in and out
+    arma::vec alpha = rateparam.subvec(0, 1);
+    arma::vec x_alpha = rateparam.subvec(2, 3);
     x_alpha(0) = clamp(x_alpha(0), 0, 365);
     x_alpha(1) = clamp(x_alpha(1), 0, 365);
     //FB -> trans
@@ -112,6 +116,9 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha,
   } else if (model == "time_out_time_in_group") {
     // time-varying rate in and out, with n group-specific rates (first n rates are out, next n rates are in)
     // (this actually functions identically to above)
+    int n_groups = rateparam.size() / 2;
+    arma::vec alpha = rateparam.subvec(0, n_groups);
+    arma::vec x_alpha = rateparam.subvec(n_groups + 1, rateparam.size());
     for(unsigned i = 0; i < x_alpha.size(); i++) {
       x_alpha(i) = clamp(x_alpha(i), 0, 365);
     }
@@ -150,6 +157,8 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec alpha, arma::vec x_alpha,
     Q(3,1) = 0;
     Q(3,2) = 0;
   } else if (model == "sst_out_sst_in") {
+    arma::vec alpha = rateparam.subvec(0, 1);
+    arma::vec x_alpha = rateparam.subvec(2, 3);
     //Checking if point falls on land will make this already slow lookup even longer
     //hacky solution is to expand a point outwards by 0.1 degrees until we get sst values and take the average
     //I do this for a maximum of 10 iterations before we bail out and consider it a bad simulation

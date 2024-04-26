@@ -10,8 +10,7 @@
 #'   * `mu`: list. Initial OUF range centre coordinate pairs `(x, y)`, with `NA` for IOU states
 #'   * `Q`:
 #'   * `state`: vector. Initial state sequence, length `nrow(track)`
-#'   * `alpha`: vector. Length dependent on model choice
-#'   * `x_alpha`: vector. Length dependent on model choice
+#'   * `rateparam`: vector. Length dependent on model choice
 #' @param fixed list of fixed parameters:
 #'   * `tau_pos`: vector. Fixed values of \eqn{tau_{pos}} for each state with `NA` for parameters to estimate. Length `nbStates`
 #'   * `tau_vel`: vector. Fixed values of \eqn{tau_{vel}} for each state with `NA` for parameters to estimate. Length `nbStates`
@@ -22,16 +21,15 @@
 #'   * `knownStates`: vector. Known states with `NA` for those to estimate. Length `nrow(track)`
 #'   * `kappa`: integer. Maximum transition rate to bound rates when they are modelled. Length 1
 #' @param priors list. Parameters of prior distributions, with components:
-#'   * `func`: list of distribution function names, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `x_alpha` by MH
-#'   * `args`: list of list containg function args for distribution functions, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(alpha)` when estimating rate parameters `alpha`, `x_alpha` by MH
+#'   * `func`: list of distribution function names, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(rateparam)` when estimating rate parameters `rateparam` by MH
+#'   * `args`: list of list containg function args for distribution functions, of length `5 * nbStates` or `7 * nbStates` for movement parameters + `length(rateparam)` when estimating rate parameters `rateparam` by MH
 #'   * `shape`: vector. Shapes of gamma priors for the transition rates when Gibbs sampling
 #'   * `rate`: vector. Rates of gamma priors for the transition rates when Gibbs sampling
 #'   * `con`: vector. Concentrations of Dirichlet priors for transition probabilities when Gibbs sampling
 #' @param props list. Parameters of proposal distributions, with components:
 #'   * `S`: matrix. Initial value for the lower triangular matrix of RAM algorithm, so that the covariance matrix of the proposal distribution is `SS'`.
 #'   Dimensions `(5 * nbStates, 5 * nbStates)` when not modelling rate
-#'   parameters (`model` is `NA`) and `(5 * nbStates + length(alpha) +
-#'   length(x_alpha), 5 * nbStates + length(alpha) + length(x_alpha))`
+#'   parameters (`model` is `NA`) and `(5 * nbStates + length(rateparam), 5 * nbStates + length(rateparam))`
 #'   otherwise.
 #'   * `updateLim`: vector. Two values: min and max length of updated state sequence
 #'   * `updateProbs`: vector. Probabilities for each element of `updateLim[1]:updateLim[2]` (if `NULL`,
@@ -150,13 +148,13 @@ runMCMC <- function(track,
   if (updateState && is.null(inits$Q) &&
     (
       is.null(fixed$kappa) ||
-        is.null(inits$alpha) || is.null(inits$x_alpha) || is.na(model)
+        is.null(inits$rateparam) || is.na(model)
     )) {
     stop(
       "argument 'inits$Q' is null, expected ",
       paste(
         c("fixed$kappa")[which(is.null(fixed$kappa))],
-        c("inits$alpha", "inits$x_alpha")[which(sapply(inits[c("alpha", "x_alpha")], is.null))],
+        c("inits$rateparam")[which(sapply(inits[c("rateparam")], is.null))],
         c("model")[which(is.na(model))],
         collapse = ", "
       ),
@@ -235,12 +233,12 @@ runMCMC <- function(track,
       )
     }
     if (!is.na(model) &&
-      length(priors[[arg]]) != nbParam * nbStates + length(inits$alpha)  + length(inits$x_alpha)) {
+      length(priors[[arg]]) != nbParam * nbStates + length(inits$rateparam)) {
       stop(
         "argument 'priors$",
         arg,
         "' has the wrong length, expected ",
-        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
+        nbParam * nbStates + length(inits$rateparam),
         " but got ",
         length(priors[[arg]])
       )
@@ -286,16 +284,16 @@ runMCMC <- function(track,
   if (!is.na(model) &&
     all(
       dim(props$S) != c(
-        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
-        nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha)
+        nbParam * nbStates + length(inits$rateparam),
+        nbParam * nbStates + length(inits$rateparam)
       )
     )) {
     stop(
       "argument 'props$S' has the wrong dimensions, expected ",
       paste(
         c(
-          nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha),
-          nbParam * nbStates + length(inits$alpha) + length(inits$x_alpha)
+          nbParam * nbStates + length(inits$rateparam),
+          nbParam * nbStates + length(inits$rateparam)
         ),
         collpase = ", "
       ),
@@ -444,7 +442,7 @@ runMCMC <- function(track,
       priors$func[(nbParam * nbStates + 1):length(priors$func)]
     ratePriorArgs <-
       priors$args[(nbParam * nbStates + 1):length(priors$args)]
-    rateparam <- c(inits$alpha, inits$x_alpha)
+    rateparam <- inits$rateparam
   }
 
   # unpack proposal parameters

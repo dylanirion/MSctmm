@@ -67,8 +67,7 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
         param = param,
         mu = mu,
         Hmat = Hmat[c(begin, end), ],
-        alpha = rateparam[1:(length(rateparam) / 2)],
-        x_alpha = rateparam[((length(rateparam) / 2) + 1):length(rateparam)],
+        rateparam = rateparam,
         model = model
       )
     }

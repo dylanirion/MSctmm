@@ -20,8 +20,7 @@ sample_path_mr2(
   param,
   mu,
   Hmat,
-  alpha,
-  x_alpha,
+  rateparam,
   model
 )
 }
