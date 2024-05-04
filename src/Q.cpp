@@ -116,9 +116,9 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
   } else if (model == "time_out_time_in_group") {
     // time-varying rate in and out, with n group-specific rates (first n rates are out, next n rates are in)
     // (this actually functions identically to above)
-    int n_groups = rateparam.size() / 2;
-    arma::vec alpha = rateparam.subvec(0, n_groups);
-    arma::vec x_alpha = rateparam.subvec(n_groups + 1, rateparam.size());
+    int n_groups = rateparam.size() / 4;
+    arma::vec alpha = rateparam.subvec(0, (n_groups * 2) - 1);
+    arma::vec x_alpha = rateparam.subvec(n_groups * 2, rateparam.size() - 1);
     for(unsigned i = 0; i < x_alpha.size(); i++) {
       x_alpha(i) = clamp(x_alpha(i), 0, 365);
     }
@@ -135,14 +135,15 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
+    // ERROR HERE?
+    Q(4,0) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
     // trans -> GB
-    Q(4,1) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,1) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
     // trans -> MB
-    Q(4,2) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
+    Q(4,2) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
     // trans -> AB
-    Q(4,3) = alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1)))))/4;
-    Q(4,4) = -(alpha((x_alpha.size() / 2) + (group - 1))/(1+exp(-alpha((x_alpha.size() / 2) + (group - 1)) * (yday - x_alpha((x_alpha.size() / 2) + (group - 1))))));
+    Q(4,3) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
+    Q(4,4) = -(alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1))))));
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
     Q(0,2) = 0;
