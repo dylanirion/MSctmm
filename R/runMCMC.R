@@ -833,7 +833,7 @@ runMCMC <- function(track,
     }
 
     # TODO: adapt and burnin redundant?
-    if (adapt && iter <= adapt) {
+    if (adapt && iter >= 1000 && iter <= adapt) {
       if (any(is.na(unlist(fixPar)))) {
         newS <-
           adapt_S(S[seq_along(param), seq_along(param)][is.na(unlist(fixPar)), is.na(unlist(fixPar))], newParams[[1]][is.na(unlist(fixPar))], acceptProb, iter)
