@@ -28,7 +28,7 @@ Rcpp::Function f = rerddap["griddap"];
 // [[Rcpp::export]]
 Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t time, const double lng, const double lat, const int group, const String model) {
   struct tm t = *localtime(&time);
-  int yday = t.tm_yday;
+  int yday = t.tm_yday * 86400;
 
   PJ_COORD input_coords, output_coords; // https://proj.org/development/reference/datatypes.html#c.PJ_COORD
   input_coords = proj_coord(lat, lng, 0, 0);
@@ -135,7 +135,6 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    // ERROR HERE?
     Q(4,0) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
     // trans -> GB
     Q(4,1) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (yday - x_alpha(n_groups + (group - 1)))))/4;
