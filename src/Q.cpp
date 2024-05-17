@@ -77,8 +77,6 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     // time-varying rate in and out
     arma::vec alpha = rateparam.subvec(0, 1);
     arma::vec x_alpha = rateparam.subvec(2, 3);
-    x_alpha(0) = clamp(x_alpha(0), 0, 365);
-    x_alpha(1) = clamp(x_alpha(1), 0, 365);
     //FB -> trans
     Q(0,4) = alpha(0)/(1+exp(-alpha(0) * (yday - x_alpha(0))));
     Q(0,0) = Q(0,4) * -1;
@@ -119,9 +117,6 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     int n_groups = rateparam.size() / 4;
     arma::vec alpha = rateparam.subvec(0, (n_groups * 2) - 1);
     arma::vec x_alpha = rateparam.subvec(n_groups * 2, rateparam.size() - 1);
-    for(unsigned i = 0; i < x_alpha.size(); i++) {
-      x_alpha(i) = clamp(x_alpha(i), 0, 365);
-    }
     //FB -> trans
     Q(0,4) = alpha(group - 1)/(1+exp(-alpha(group - 1) * (yday - x_alpha(group - 1))));
     Q(0,0) = Q(0,4) * -1;
