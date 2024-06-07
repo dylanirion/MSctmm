@@ -78,7 +78,8 @@ runMCMC <- function(track,
                     Hmat,
                     updateState = TRUE,
                     adapt = FALSE,
-                    model = NA) {
+                    model = NA,
+                    debug = FALSE) {
   options(warn = 1) # show warnings as they occur
   # Check track df
   if (!is.data.frame(track)) {
@@ -696,7 +697,7 @@ runMCMC <- function(track,
             rateparam = newRateParams[[2]],
             kappa = kappa,
             model = model
-          ), TRUE)
+          ), !debug)
         })
         if (all(sapply(upState, function(x) !inherits(x, "try-error")))) {
           newData.list <- lapply(ids, function(id) upState[[id]]$newData)
@@ -766,7 +767,8 @@ runMCMC <- function(track,
             switch = switch[[id]],
             priorShape = priorShape,
             priorRate = priorRate,
-            priorCon = priorCon
+            priorCon = priorCon,
+            kappa = kappa
           )
         })
         names(Q) <- ids
