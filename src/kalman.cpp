@@ -121,7 +121,7 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
       Pest = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma.slice(S(i) - 1), dt(i));
     }
 
-    // if starting a new IOU bout, keep track of index
+    // if starting a new IOU/BM bout, keep track of index
     else if (i > 0 && ID(i) == ID(i - 1) && S(i) != S(i - 1) && std::isinf(tau_pos(S(i) - 1)))
     {
       iou(k) = R_IsNA(X(i, 0)) ? i + 1 : i; // ternary to lookahead of NA inserted by updateState, if doing so
@@ -218,7 +218,7 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
   // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
   for (int i = 0; i < nbStates; i++)
   {
-    // if IOU state, use bout start location for mu
+    // if IOU/BM state, use bout start location for mu
     if (std::isinf(tau_pos(i)))
     {
       for (int j = 0; j < nbID; j++)
