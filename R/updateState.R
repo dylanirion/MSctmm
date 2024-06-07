@@ -73,25 +73,30 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
     }
 
     # check for autoreject
-    if (nrow(path) == 1 & all(path == -1)) {
+    if (nrow(path) == 1 && all(path == -1)) {
       stop("Exceeded path simulation iteration limit")
     }
 
     path <- path[-c(1, nrow(path)), ] # remove 1st and last rows (observations)
 
     # update state sequence
-    newSwitch <- rbind(switch[switch[ , "time"] < Tbeg,],
-                       path,
-                       switch[switch[ , "time"] > Tend,],
-                       deparse.level = 0)
+    newSwitch <- as.matrix(
+      rbind(
+        switch[switch[ , "time"] < Tbeg, ],
+        path,
+        switch[switch[ , "time"] > Tend, ],
+        deparse.level = 0)
+    , ncol = 2, drop = FALSE)
 
     # remove switches into same state
-    fakeSwitch <- which(newSwitch[-1, "state"] == newSwitch[-nrow(newSwitch), "state"]) + 1
+    fakeSwitch <- which(newSwitch[-1, "state", drop = FALSE] == newSwitch[-nrow(newSwitch), "state", drop = FALSE]) + 1
+
     if (length(fakeSwitch) > 0)
-        newSwitch <- newSwitch[-fakeSwitch, ]
-    if (nrow(newSwitch)) {
-        newData <- rbind(obs,
-                         cbind("x" = NA, "y" = NA, "time" = newSwitch[ , "time"], "ID" = rep(obs[1, "ID"], nrow(newSwitch)), "state" =  newSwitch[ , "state"], "group" = rep(obs[1, "group"], nrow(newSwitch))))
+        newSwitch <- newSwitch[-fakeSwitch, , drop = FALSE]
+    if (nrow(newSwitch) > 0) {
+        newData <- rbind(
+          obs,
+          cbind("x" = NA, "y" = NA, "time" = newSwitch[ , "time"], "ID" = rep(obs[1, "ID"], nrow(newSwitch)), "state" =  newSwitch[ , "state"], "group" = rep(obs[1, "group"], nrow(newSwitch))))
         rownames(newData) <- NULL
     } else {
         newData <- obs
