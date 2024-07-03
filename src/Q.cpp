@@ -158,9 +158,9 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,1) = 0;
     Q(3,2) = 0;
   } else if (model == "NULL_out_dist_in") {
-    // distnace-varying rate in and out
+    // distance-varying rate in and common rate out
     arma::vec alpha = rateparam.subvec(0, 1);
-    arma::vec x_alpha = rateparam.subvec(2, 3);
+    arma::vec x_alpha = rateparam.subvec(2, 2);
     //FB -> trans
     Q(0,4) = alpha(0);
     Q(0,0) = Q(0,4) * -1;
@@ -174,13 +174,13 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,4) = alpha(0);
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha(1) / (1 + exp(-alpha(1) * (FBdist - x_alpha(1))));
+    Q(4,0) = alpha(1) / (1 + exp(-alpha(1) * (FBdist - x_alpha(0))));
     // trans -> GB
-    Q(4,1) = alpha(1) / (1 + exp(-alpha(1) * (GBdist - x_alpha(1))));
+    Q(4,1) = alpha(1) / (1 + exp(-alpha(1) * (GBdist - x_alpha(0))));
     // trans -> MB
-    Q(4,2) = alpha(1) / (1 + exp(-alpha(1) * (MBdist - x_alpha(1))));
+    Q(4,2) = alpha(1) / (1 + exp(-alpha(1) * (MBdist - x_alpha(0))));
     // trans -> AB
-    Q(4,3) = alpha(1) / (1 + exp(-alpha(1) * (ABdist - x_alpha(1))));
+    Q(4,3) = alpha(1) / (1 + exp(-alpha(1) * (ABdist - x_alpha(0))));
     Q(4,4) = (Q(4,0) + Q(4,1) + Q(4,2) + Q(4,3)) * -1;
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
@@ -196,7 +196,7 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,1) = 0;
     Q(3,2) = 0;
   } else if (model == "NULL_out_dist_in_group") {
-    // distance-varying rate in and out, with n group-specific rates (first n rates are out, next n rates are in)
+    // distance-varying rate in, common rate out, with n group-specific rates (first n rates are out, next n rates are in)
     // (this actually functions identically to above)
     int n_groups = rateparam.size() / 4;
     arma::vec alpha = rateparam.subvec(0, (n_groups * 2) - 1);
@@ -214,13 +214,13 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,4) = alpha(group - 1);
     Q(3,3) = Q(3,4) * -1;
     // trans -> FB
-    Q(4,0) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (FBdist - x_alpha(n_groups + (group - 1)))));
+    Q(4,0) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (FBdist - x_alpha(group - 1))));
     // trans -> GB
-    Q(4,1) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (GBdist - x_alpha(n_groups + (group - 1)))));
+    Q(4,1) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (GBdist - x_alpha(group - 1))));
     // trans -> MB
-    Q(4,2) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (MBdist - x_alpha(n_groups + (group - 1)))));
+    Q(4,2) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (MBdist - x_alpha(group - 1))));
     // trans -> AB
-    Q(4,3) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (ABdist - x_alpha(n_groups + (group - 1)))));
+    Q(4,3) = alpha(n_groups + (group - 1))/(1+exp(-alpha(n_groups + (group - 1)) * (ABdist - x_alpha(group - 1))));
     Q(4,4) = (Q(4,0) + Q(4,1) + Q(4,2) + Q(4,3)) * -1;
     //Impossible transitions
     Q(0,1) = 0; // This might actually be possible (GB->FB)
