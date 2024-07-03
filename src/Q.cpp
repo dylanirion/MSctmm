@@ -195,7 +195,7 @@ Rcpp::NumericMatrix getQ(const int nbStates, arma::vec rateparam, const time_t t
     Q(3,0) = 0;
     Q(3,1) = 0;
     Q(3,2) = 0;
-  } else if (model == "dist_out_dist_in_group") {
+  } else if (model == "NULL_out_dist_in_group") {
     // distance-varying rate in and out, with n group-specific rates (first n rates are out, next n rates are in)
     // (this actually functions identically to above)
     int n_groups = rateparam.size() / 4;
