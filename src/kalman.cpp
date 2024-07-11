@@ -227,8 +227,11 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
         for (uword l = 0; l < iou_idx.size(); l++)
         {
           // find the max iou.head(k) that is not greater than idx
-          uword bout_start_idx = find(iou.head(k) <= iou_idx(l)).max();
-          mu.slice(iou_idx(l)) = X.row(iou.head(k)(bout_start_idx)).t();
+          uvec bout_idxs = find(iou.head(k) <= iou_idx(l)); // this name might not be meaningful, can't remember what I was doin here
+          if (bout_idxs.n_elem > 0) {
+            uword bout_start_idx = bout_idxs.max();
+            mu.slice(iou_idx(l)) = X.row(iou.head(k)(bout_start_idx)).t();
+          }
         }
       }
       // otherwise calculate mu from residuals (maximum likelihood solution)
