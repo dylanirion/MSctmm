@@ -929,7 +929,6 @@ runMCMC <- function(
             Hmat = HmatAll
             # normally distributed random effects
             #TODO: subset to observed states?
-            # FIXME: not accepting any proposals
           )$llk + sum(dnorm(newParams[[id]][[2]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(!str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], log = TRUE))
         }))
         # mu <- as.vector(t(kalman$mu))
