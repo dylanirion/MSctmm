@@ -82,11 +82,11 @@ updateState <- function(obs, nbStates, knownStates, switch, updateLim, param, mu
     # update state sequence
     newSwitch <- as.matrix(
       rbind(
-        switch[switch[ , "time"] < Tbeg, ],
+        switch[switch[, "time"] < Tbeg, ],
         path,
-        switch[switch[ , "time"] > Tend, ],
-        deparse.level = 0)
-    , ncol = 2, drop = FALSE)
+        switch[switch[, "time"] > Tend, ],
+        deparse.level = 0),
+        ncol = 2, drop = FALSE)
 
     # remove switches into same state
     fakeSwitch <- which(newSwitch[-1, "state", drop = FALSE] == newSwitch[-nrow(newSwitch), "state", drop = FALSE]) + 1
