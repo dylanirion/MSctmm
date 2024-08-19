@@ -524,8 +524,9 @@ runMCMC <- function(
         nbStates = nbStates,
         param = param[[id]],
         fixmu = mu,
-        Hmat = HmatAll
+        Hmat = HmatAll[which(data.mat[, "ID"] == id), ]
         # normally distributed random effects
+        #TODO: subset to observed states?
       )$llk + sum(dnorm(param[[id]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], hyperparam_mu[which(is.na(unlist(fixPar)))], hyperparam_sd[which(is.na(unlist(fixPar)))], log = TRUE))
     }))
     oldlogprior <- do.call("sum", lapply(ids, function(id) {
@@ -712,8 +713,7 @@ runMCMC <- function(
               obs = obs[[id]],
               nbStates = nbStates,
               knownStates = known[[id]],
-              switch = switch[[id]
-              ],
+              switch = switch[[id]],
               updateLim = updateLim[[id]],
               param = param[[id]],
               mu = unlist(mu),
@@ -735,8 +735,7 @@ runMCMC <- function(
               obs = obs[[id]],
               nbStates = nbStates,
               knownStates = known[[id]],
-              switch = switch[[id]
-              ],
+              switch = switch[[id]],
               updateLim = updateLim[[id]],
               param = param,
               mu = unlist(mu),
@@ -772,8 +771,9 @@ runMCMC <- function(
                 nbStates = nbStates,
                 param = param[[id]],
                 fixmu = unlist(mu),
-                Hmat = newHmatAll
+                Hmat = newHmatAll[which(newData.mat[, "ID"] == id), ]
                 # normally distributed random effects
+                #TODO: subset to observed states?
               )$llk + sum(dnorm(param[[id]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], hyperparam_mu[which(is.na(unlist(fixPar)))], hyperparam_sd[which(is.na(unlist(fixPar)))], log = TRUE))
             }))
             newlogprior <- do.call("sum", lapply(ids, function(id) {
@@ -926,7 +926,7 @@ runMCMC <- function(
             nbStates = nbStates,
             param = newParams[[id]][[2]],
             fixmu = newMu[[2]],
-            Hmat = HmatAll
+            Hmat = HmatAll[which(data.mat[, "ID"] == id), ]
             # normally distributed random effects
             #TODO: subset to observed states?
           )$llk + sum(dnorm(newParams[[id]][[2]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(!str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], log = TRUE))
