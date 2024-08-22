@@ -872,6 +872,7 @@ runMCMC <- function(
     if (randomEffects) {
       newHyperParams <-
         proposeParams(c(hyperparam_mu, hyperparam_sd), S[seq_along(c(hyperparam_mu, hyperparam_sd)), seq_along(c(hyperparam_mu, hyperparam_sd))], nbStates)
+      newHyperParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
       newParams <- lapply(ids, function(id) {
         newP <- proposeParams(param[[id]], randomS[[id]], nbStates)
         # overwrite fixed params
@@ -886,6 +887,11 @@ runMCMC <- function(
     }
 
     if (randomEffects) {
+      newMu <-
+        proposeParams(mu, S[(2 * nbHyperParam * nbStates + 1):nrow(S), (2 * nbHyperParam * nbStates + 1):ncol(S)])
+      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
+      newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
+
       if (any(sapply(newParams, function(pars) {
         !constraintsFromDensityArgs(pars[[2]], priorArgs)
       })) || any(sapply(newParams, function(pars) {
@@ -893,10 +899,6 @@ runMCMC <- function(
       })) || any(newHyperParams[[2]][which(str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))] < 0)) {
         acceptProb <- 0
       } else {
-        newMu <-
-          proposeParams(mu, S[(2 * nbHyperParam * nbStates + 1):nrow(S), (2 * nbHyperParam * nbStates + 1):ncol(S)])
-        # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-        newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
         # Calculate acceptance ratio
         data.mat <- do.call("rbind", data.list)
         data.mat <- data.mat[, c("x", "y", "time", "ID", "state")]
@@ -950,14 +952,14 @@ runMCMC <- function(
         oldlogprior <- newlogprior
       }
     } else {
+      newMu <-
+        proposeParams(mu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
+      # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
+      newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
+
       if (any(!constraintsFromDensityArgs(newParams[[2]], priorArgs)) || any(newParams[[2]][1:nbStates] < newParams[[2]][(nbStates + 1):(2 * nbStates)])) {
         acceptProb <- 0
       } else {
-        newMu <-
-          proposeParams(mu, S[(length(param) + 1):nrow(S), (length(param) + 1):ncol(S)])
-        # NB we could bound mu to -180,180 -90,90 with a different dist in proposeMus() but would need projected bounds
-        newMu[[2]][which(!is.na(unlist(fixMu)))] <- unlist(fixMu)[which(!is.na(unlist(fixMu)))]
-
         # Calculate acceptance ratio
         data.mat <- do.call("rbind", data.list)
         data.mat <- data.mat[, c("x", "y", "time", "ID", "state")]
