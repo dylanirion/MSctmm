@@ -526,7 +526,7 @@ runMCMC <- function(
         fixmu = mu,
         Hmat = HmatAll[which(data.mat[, "ID"] == id), ]
         # normally distributed random effects
-        #TODO: subset to observed states?
+        # TODO: subset to observed states?
       )$llk + sum(dnorm(param[[id]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], hyperparam_mu[which(is.na(unlist(fixPar)))], hyperparam_sd[which(is.na(unlist(fixPar)))], log = TRUE))
     }))
     oldlogprior <- do.call("sum", lapply(ids, function(id) {
@@ -773,7 +773,7 @@ runMCMC <- function(
                 fixmu = unlist(mu),
                 Hmat = newHmatAll[which(newData.mat[, "ID"] == id), ]
                 # normally distributed random effects
-                #TODO: subset to observed states?
+                # TODO: subset to observed states?
               )$llk + sum(dnorm(param[[id]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], hyperparam_mu[which(is.na(unlist(fixPar)))], hyperparam_sd[which(is.na(unlist(fixPar)))], log = TRUE))
             }))
             newlogprior <- do.call("sum", lapply(ids, function(id) {
@@ -853,8 +853,7 @@ runMCMC <- function(
           updateQ(
             nbStates = nbStates,
             data = data.list[[id]],
-            switch = switch[[id]
-            ],
+            switch = switch[[id]],
             priorShape = priorShape,
             priorRate = priorRate,
             priorCon = priorCon,
@@ -870,15 +869,31 @@ runMCMC <- function(
     ###################################
 
     if (randomEffects) {
-      newHyperParams <-
-        proposeParams(c(hyperparam_mu, hyperparam_sd), S[seq_along(c(hyperparam_mu, hyperparam_sd)), seq_along(c(hyperparam_mu, hyperparam_sd))], nbStates)
-      newHyperParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
-      newParams <- lapply(ids, function(id) {
-        newP <- proposeParams(param[[id]], randomS[[id]], nbStates)
-        # overwrite fixed params
-        newP[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
-        newP
-      })
+      if (nbParam == 5) {
+        newHyperParams <-
+          proposeParams(log(c(hyperparam_mu, hyperparam_sd)), S[seq_along(c(hyperparam_mu, hyperparam_sd)), seq_along(c(hyperparam_mu, hyperparam_sd))], nbStates)
+        newHyperParams[[2]] <- exp(newHyperParams[[2]])
+        newHyperParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
+        newParams <- lapply(ids, function(id) {
+          newP <- proposeParams(log(param[[id]]), randomS[[id]], nbStates)
+          newP[[2]] <- exp(newP[[2]])
+          # overwrite fixed params
+          newP[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
+          newP
+        })
+      } else {
+        newHyperParams <-
+          proposeParams(c(hyperparam_mu, log(hyperparam_sd)), S[seq_along(c(hyperparam_mu, hyperparam_sd)), seq_along(c(hyperparam_mu, hyperparam_sd))], nbStates)
+        newHyperParams[[2]][(length(hyperparam_mu) + 1):length(newHyperParams[[2]])] <- exp(newHyperParams[[2]][(length(hyperparam_mu) + 1):length(newHyperParams[[2]])])
+        newHyperParams[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
+        newParams <- lapply(ids, function(id) {
+          # TODO: log stirctly positive parameters?
+          newP <- proposeParams(param[[id]], randomS[[id]], nbStates)
+          # overwrite fixed params
+          newP[[2]][which(!is.na(unlist(fixPar)))] <- unlist(fixPar)[which(!is.na(unlist(fixPar)))]
+          newP
+        })
+      }
     } else {
       newParams <-
         proposeParams(param, S[seq_along(param), seq_along(param)], nbStates)
@@ -930,7 +945,7 @@ runMCMC <- function(
             fixmu = newMu[[2]],
             Hmat = HmatAll[which(data.mat[, "ID"] == id), ]
             # normally distributed random effects
-            #TODO: subset to observed states?
+            # TODO: subset to observed states?
           )$llk + sum(dnorm(newParams[[id]][[2]][names(hyperparam_mu)][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(!str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], newHyperParams[[2]][which(str_detect(names(newHyperParams[[2]]), "_sd"))][which(is.na(unlist(fixPar)))], log = TRUE))
         }))
         # mu <- as.vector(t(kalman$mu))
@@ -1096,6 +1111,10 @@ runMCMC <- function(
   cat("\n")
   cat("Elapsed: ", pretty_dt(difftime(Sys.time(), t0, units = "secs")), sep = "")
   cat("\n")
+
+  if (debug) {
+    cat(diag(S))
+  }
 
   return(
     c(
