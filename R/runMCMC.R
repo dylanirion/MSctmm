@@ -842,7 +842,7 @@ runMCMC <- function(
           }
         }
       }
-      if (!is.na(model) && adapt && iter >= 100 && iter <= adapt) {
+      if (!is.na(model) && adapt && iter >= 1000 && iter <= adapt) {
         newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
         newS[is.na(newS)] <- rateS[is.na(newS)]
         rateS <- newS
@@ -1015,7 +1015,7 @@ runMCMC <- function(
     }
 
     # TODO: adapt and burnin redundant?
-    if (adapt && iter >= 100 && iter <= adapt) {
+    if (adapt && iter >= 1000 && iter <= adapt) {
       if (randomEffects) {
         if (any(is.na(unlist(fixPar)))) {
           newS <-
