@@ -1,4 +1,5 @@
 #include <RcppArmadillo.h>
+#include <math.h>
 #include "mat.hpp"
 #include "pdsolve.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -274,7 +275,7 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
     if (!any(i == iou.head(k)) && !any(i == na_xy))
     {
       colvec resid = u.slice(i).col(0) - u.slice(i).cols(1, 2) * mu.slice(i);
-      llk -= (logdetF(i) + dot(resid, resid.t() * iF.slice(i))) / 2;
+      llk -= (logdetF(i) + dot(resid, resid.t() * iF.slice(i)) + 2 * log(2 * M_PI)) / 2;
     }
   }
 
