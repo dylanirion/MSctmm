@@ -271,8 +271,8 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
       Q(1,1) = as<double>( wrap( dexp2( as<NumericVector>( wrap( dtau ) ), as<NumericVector>( wrap ( Exp ) ) ) ) ) / tau(1);
 
       if( !std::isinf( dt ) ) {
-        Q(1,0) = as_scalar( clamp ( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
-        Q(0,1) = as_scalar( clamp ( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
+        Q(1,0) = as_scalar( clamp( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
+        Q(0,1) = as_scalar( clamp( DExp2, 0.0, sqrt( Q(0,0) * Q(1,1) ) ) );
       }
     } else if(tau(0) != 0 && tau(1) != 0) {
       if( !std::isinf( dt ) ) { //IOU,OUF/OUO,IID
@@ -347,10 +347,7 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt) {
 
       } // end OUF/OUO
     }
-    Q(0,0) = Q(0,0) * sigma(0,0);
-    Q(0,1) = Q(0,1) * sigma(0,1);
-    Q(1,0) = Q(1,0) * sigma(1,0);
-    Q(1,1) = Q(1,1) * sigma(1,1);
+    Q.submat(0,0,1,1) = Q.submat(0,0,1,1) * sigma.t();
 
     //IOU prior fix
     Q.replace(datum::nan, 0 );  // replace each NaN with 0
