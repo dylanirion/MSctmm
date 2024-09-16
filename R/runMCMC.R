@@ -79,7 +79,8 @@ runMCMC <- function(track,
                     updateState = TRUE,
                     adapt = FALSE,
                     model = NA,
-                    debug = FALSE) {
+                    debug = FALSE,
+                    silent = FALSE) {
   options(warn = 1) # show warnings as they occur
   # Check track df
   if (!is.data.frame(track)) {
@@ -575,9 +576,7 @@ runMCMC <- function(track,
     priorArgs,
     rateparam,
     ratePriorFunc,
-    ratePriorArgs,
-    kappa,
-    model
+    ratePriorArgs
   )
 
   ###############################
@@ -634,7 +633,7 @@ runMCMC <- function(track,
 
   t0 <- Sys.time()
   for (iter in 1:nbIter) {
-    if (iter < 100 || iter %% 100 == 0) {
+    if ((iter < 100 || iter %% 100 == 0) && !silent) {
       cat(
         "\33[2K\rIteration ",
         iter,
@@ -728,9 +727,7 @@ runMCMC <- function(track,
             priorArgs,
             newRateParams[[2]],
             ratePriorFunc,
-            ratePriorArgs,
-            kappa,
-            model
+            ratePriorArgs
           )
           logHR <- newllk + newlogprior - oldllk - oldlogprior
           acceptProb <-
@@ -806,9 +803,7 @@ runMCMC <- function(track,
         priorArgs,
         rateparam,
         ratePriorFunc,
-        ratePriorArgs,
-        kappa,
-        model
+        ratePriorArgs
       )
       kalman <-
         kalman_rcpp(
@@ -908,9 +903,11 @@ runMCMC <- function(track,
     # NB split or merge update mu, Q, params, posssibly rateMean, rateSD, S...
     # https://www.gen.dev/tutorials/rj/tutorial#split-merge
   }
-  cat("\n")
-  cat("Elapsed: ", pretty_dt(difftime(Sys.time(), t0, units = "secs")), sep = "")
-  cat("\n")
+  if(!silent) {
+    cat("\n")
+    cat("Elapsed: ", pretty_dt(difftime(Sys.time(), t0, units = "secs")), sep = "")
+    cat("\n")
+  }
 
   return(
     c(
@@ -952,15 +949,13 @@ getLogPrior <- function(param,
                         priorArgs,
                         rateparam,
                         ratePriorFunc,
-                        ratePriorArgs,
-                        kappa,
-                        model) {
+                        ratePriorArgs) {
   return(
     sum(
       unlist(c(
-        sapply(seq_len(length(param)), FUN = function(i) {
-          if (is.na(unlist(fixPar)[i])) {
-            return(do.call(priorFunc[[i]], c(priorArgs[[i]], log = TRUE, x = param[[i]])))
+        sapply(names(param), FUN = function(par) {
+          if (is.na(unlist(fixPar)[par])) {
+            return(do.call(priorFunc[[par]], c(priorArgs[[par]], log = TRUE, x = param[[par]])))
           }
         }),
         sapply(seq_len(length(mu)), FUN = function(i) {
@@ -968,8 +963,8 @@ getLogPrior <- function(param,
             return(do.call(priorFunc[[length(param) + i]], c(priorArgs[[length(param) + i]], log = TRUE, x = mu[[i]])))
           }
         }),
-        sapply(seq_len(length(rateparam)), FUN = function(i) {
-          return(do.call(ratePriorFunc[[i]], c(ratePriorArgs[[i]], log = TRUE, x = rateparam[[i]])))
+       sapply(names(rateparam), FUN = function(par) {
+          return(do.call(ratePriorFunc[[par]], c(ratePriorArgs[[par]], log = TRUE, x = rateparam[[par]])))
         })
       )
     ))
@@ -977,10 +972,12 @@ getLogPrior <- function(param,
 }
 
 constraintsFromDensityArgs <- function(param, args) {
-  return(sapply(seq_len(length(param)), FUN = function(i) {
-    if (is.na(param[i])) return(TRUE)
-    lower <- ifelse(any(names(args[[i]]) %in% c("min", "lower")), param[i] >= args[[i]][[which(names(args[[i]]) %in% c("min", "lower"))]], TRUE)
-    upper <- ifelse(any(names(args[[i]]) %in% c("max", "upper")), param[i] <= args[[i]][[which(names(args[[i]]) %in% c("max", "upper"))]], TRUE)
+  return(sapply(names(param), FUN = function(par) {
+    if (is.na(param[par])) {
+      return(TRUE)
+    }
+    lower <- ifelse(any(names(args[[par]]) %in% c("min", "lower")), param[par] >= args[[par]][[which(names(args[[par]]) %in% c("min", "lower"))]], TRUE)
+    upper <- ifelse(any(names(args[[par]]) %in% c("max", "upper")), param[par] <= args[[par]][[which(names(args[[par]]) %in% c("max", "upper"))]], TRUE)
     return(lower && upper)
   }))
 }
