@@ -7,7 +7,7 @@ getQ <- function(nbStates, rateparam, time, lng, lat, group, model) {
 
 #' Kalman filter
 #'
-#' This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
+#' This code is adapted from the packages ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
 #' and MScrawl (Michelot and Blackwell, 2019).
 #'
 #' @name kalman_rcpp

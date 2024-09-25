@@ -8,7 +8,7 @@ using namespace arma;
 
 //' Kalman filter
 //'
-//' This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
+//' This code is adapted from the packages ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
 //' and MScrawl (Michelot and Blackwell, 2019).
 //'
 //' @name kalman_rcpp
@@ -224,12 +224,14 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
     {
       for (int j = 0; j < nbID; j++)
       {
-        uvec iou_idx = intersect(find(S == i + 1), find(ID == j + 1)); // indices for IOU and current individual
+        uvec iou_idx = intersect(find(S == i + 1), find(ID == j + 1)); // indices for IOU/BM and current individual
         for (uword l = 0; l < iou_idx.size(); l++)
         {
           // find the max iou.head(k) that is not greater than idx
-          uvec bout_idxs = find(iou.head(k) <= iou_idx(l)); // this name might not be meaningful, can't remember what I was doin here
+          uvec bout_idxs = find(iou.head(k) <= iou_idx(l));
           if (bout_idxs.n_elem > 0) {
+            // max() is index of most recent iou/bm start
+            // min() would be first iou/bm start
             uword bout_start_idx = bout_idxs.max();
             mu.slice(iou_idx(l)) = X.row(iou.head(k)(bout_start_idx)).t();
           }
