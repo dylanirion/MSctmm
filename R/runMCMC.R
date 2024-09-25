@@ -842,10 +842,10 @@ runMCMC <- function(track,
 
 
       muindex <-
-        unique(cumsum(rep(
+        which(rep(
           !is.infinite(fixPar$tau_pos),
           each = 2
-        )))
+        ))
       if (any(is.na(unlist(fixMu)[muindex]))) {
         newS <-
           adapt_S(S[length(param) + muindex, length(param) + muindex][is.na(unlist(fixMu)[muindex]), is.na(unlist(fixMu)[muindex])], newMu[[1]][muindex][is.na(unlist(fixMu)[muindex])], acceptProb, iter)
@@ -907,6 +907,10 @@ runMCMC <- function(track,
     cat("\n")
     cat("Elapsed: ", pretty_dt(difftime(Sys.time(), t0, units = "secs")), sep = "")
     cat("\n")
+
+    if (debug) {
+      cat(diag(S))
+    }
   }
 
   return(
