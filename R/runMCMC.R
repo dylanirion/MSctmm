@@ -442,8 +442,10 @@ runMCMC <- function(track,
       props$S[(nbParam * nbStates + 1):nrow(props$S), (nbParam * nbStates + 1):ncol(props$S)]
     ratePriorFunc <-
       priors$func[(nbParam * nbStates + 1):length(priors$func)]
+    names(ratePriorFunc) <- sub("^rateparam\\.", "", names(ratePriorFunc))
     ratePriorArgs <-
       priors$args[(nbParam * nbStates + 1):length(priors$args)]
+    names(ratePriorArgs) <- sub("^rateparam\\.", "", names(ratePriorArgs))
     rateparam <- inits$rateparam
   }
 
