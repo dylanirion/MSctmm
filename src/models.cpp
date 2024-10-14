@@ -307,18 +307,18 @@ std::unique_ptr<Model> createModel(const int &nbStates, const std::string &model
   else if (model_type == "NA")
   {
     Rcpp::DataFrame data(params["data"]);
-    Rcpp::NumericVector priorShape(params["priorShape"]);
-    Rcpp::NumericVector priorRate(params["priorRate"]);
-    Rcpp::NumericVector priorCon(params["priorCon"]);
+    Rcpp::NumericVector priorShape = params["priorShape"];
+    Rcpp::NumericVector priorRate = params["priorRate"];
+    Rcpp::NumericVector priorCon = params["priorCon"];
     return std::make_unique<NAModel>(nbStates, data, priorShape, priorRate, priorCon, kappa);
   }
   else if (model_type == "SpatialNA")
   {
     Rcpp::DataFrame data(params["data"]);
     arma::vec mu(Rcpp::as<arma::vec>(params["mu"]));
-    Rcpp::NumericVector priorShape(params["priorShape"]);
-    Rcpp::NumericVector priorRate(params["priorRate"]);
-    Rcpp::NumericVector priorCon(params["priorCon"]);
+    Rcpp::NumericVector priorShape = params["priorShape"];
+    Rcpp::NumericVector priorRate = params["priorRate"];
+    Rcpp::NumericVector priorCon = params["priorCon"];
     return std::make_unique<SpatialNAModel>(nbStates, data, mu, priorShape, priorRate, priorCon, kappa);
   }
   else
