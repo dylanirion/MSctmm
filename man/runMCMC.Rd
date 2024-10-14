@@ -17,7 +17,9 @@ runMCMC(
   Hmat,
   updateState = TRUE,
   adapt = FALSE,
-  model = NA
+  model = NA,
+  debug = FALSE,
+  silent = FALSE
 )
 }
 \arguments{
@@ -33,7 +35,6 @@ runMCMC(
 \item \code{tau_vel}: vector. Initial \eqn{tau_{vel}} for each state, of length \code{nbStates}
 \item \code{sigma}: vector. Initial \eqn{sigma} for each state, of length \code{nbStates} for isotropic covariance or \code{3 * nbStates} for anisotropic covariance
 \item \code{mu}: list. Initial OUF range centre coordinate pairs \verb{(x, y)}, with \code{NA} for IOU states
-\item \code{Q}:
 \item \code{state}: vector. Initial state sequence, length \code{nrow(track)}
 \item \code{rateparam}: vector. Length dependent on model choice
 }}

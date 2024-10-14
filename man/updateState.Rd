@@ -14,7 +14,6 @@ updateState(
   mu,
   Hmat,
   updateProbs = NULL,
-  Q = NULL,
   rateparam = NULL,
   kappa = NULL,
   model = NULL
@@ -53,4 +52,6 @@ package ECctmc (Fintzi, 2017).
 Jon Fintzi (2017). ECctmc: Simulation from Endpoint-Conditioned Continuous
 Time Markov Chains. R package version 0.2.4.
 https://CRAN.R-project.org/package=ECctmc
+
+TODO: needs priors
 }

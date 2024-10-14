@@ -1,6 +1,4 @@
-#include <RcppArmadillo.h>
-#include <algorithm>
-// [[Rcpp::depends(RcppArmadillo)]]
+#include "pdsolve.hpp"
 using namespace Rcpp;
 using namespace arma;
 
@@ -16,7 +14,7 @@ mat He(mat M){
 
 // cpp implementation of Positive definite solver
 // https://github.com/ctmm-initiative/ctmm/blob/73e7c00179eccb3ba888eb96d31cfe85baf111c4/R/matrix.R#L256
-mat PDsolve(mat M, bool sym=true, bool force=false, bool pseudo=false, double tol=std::numeric_limits<double>::epsilon()){
+mat PDsolve(mat M, bool sym, bool force, bool pseudo, double tol){
 
   uvec DIM = {M.n_rows, M.n_cols};
 

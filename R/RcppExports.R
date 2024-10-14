@@ -47,31 +47,14 @@ kalman_rcpp <- function(data, nbStates, param, fixmu, Hmat) {
 #' @param a,b States at the interval endpoints, provided as integers
 #'    corresponding to rows of the CTMC rate matrix.
 #' @param t0,t1 times of the interval endpoints
-#' @param Q CTMC rate matrix
 #'
 #' @return matrix whose first column is the sequence of transition times
 #' bookended by interval endpoints, and whose second column is the sequence of
 #' states
 #'
 #' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
-sample_path_mr <- function(a, b, t0, t1, Q, k) {
-    .Call('_MSctmm_sample_path_mr', PACKAGE = 'MSctmm', a, b, t0, t1, Q, k)
-}
-
-#' Simulate a sample path from an endpoint conditioned CTMC by modified
-#' rejection sampling.
-#'
-#' @param a,b States at the interval endpoints, provided as integers
-#'    corresponding to rows of the CTMC rate matrix.
-#' @param t0,t1 times of the interval endpoints
-#'
-#' @return matrix whose first column is the sequence of transition times
-#' bookended by interval endpoints, and whose second column is the sequence of
-#' states
-#'
-#' Modified from sample_path_mr in ECctmc (Fintzi, 2018)
-sample_path_mr2 <- function(a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, rateparam, model) {
-    .Call('_MSctmm_sample_path_mr2', PACKAGE = 'MSctmm', a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, rateparam, model)
+sample_path_mr_ <- function(a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, rateparam, model) {
+    .Call('_MSctmm_sample_path_mr_', PACKAGE = 'MSctmm', a, b, t0, t1, lng0, lat0, lng1, lat1, group, k, nbStates, param, mu, Hmat, rateparam, model)
 }
 
 #' Kalman smoother

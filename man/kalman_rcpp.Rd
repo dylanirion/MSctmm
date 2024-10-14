@@ -21,7 +21,7 @@ kalman_rcpp(data, nbStates, param, fixmu, Hmat)
 Log-likelihood
 }
 \description{
-This code is adapted from the package ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
+This code is adapted from the packages ctmm (Calabrese et al., 2016) crawl (Johnson et al., 2008),
 and MScrawl (Michelot and Blackwell, 2019).
 }
 \references{

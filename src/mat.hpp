@@ -1,5 +1,8 @@
 #ifndef _MAT_
 #define _MAT_
+#include <RcppArmadillo.h>
+#include <math.h>
+// [[Rcpp::depends(RcppArmadillo)]]
 
 arma::mat makeT(double tau_pos, double tau_vel, double dt);
 arma::mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt);

@@ -1,8 +1,4 @@
-#include <RcppArmadillo.h>
-#include <math.h>
-#include "mat.hpp"
-#include "pdsolve.hpp"
-// [[Rcpp::depends(RcppArmadillo)]]
+#include "kalman.hpp"
 using namespace Rcpp;
 using namespace arma;
 
@@ -39,9 +35,9 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu, arma::mat &Hmat)
+List kalman_rcpp(const arma::mat &data, const int &nbStates, const arma::vec &param, const arma::vec &fixmu, const arma::mat &Hmat)
 {
-
+  // TODO: share more with smooth.cpp where possible
   int nbData = data.n_rows;
   int nbID = 0;
 
@@ -65,20 +61,7 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
   vec tau_pos = param.subvec(0, nbStates - 1);
   vec tau_vel = param.subvec(nbStates, 2 * nbStates - 1);
   cube sigma(2, 2, nbStates);
-  for (int i = 0; i < nbStates; i++)
-  {
-    if (param.size() / nbStates == 3)
-    {
-      sigma.slice(i)(0, 0) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
-      sigma.slice(i)(1, 1) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
-    }
-    else if (param.size() / nbStates == 5)
-    {
-      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
-      sigma.slice(i)(0, 1) = param((2 * nbStates) - 1 + (3 * (i + 1)));
-      sigma.slice(i)(1, 0) = param((2 * nbStates) - 1 + (3 * (i + 1)));
-    }
-  }
+  prepare_sigma(param, nbStates, sigma);
 
   // define all empty matrices and vectors needed for the Kalman Filter and likelihood calculation
   mat Z{{1, 0, 0, 0}, {0, 0, 1, 0}};   // observation model which maps the true state space into the observed space (P, Hk)
@@ -113,29 +96,20 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
         iou(k) = i;
         k++;
       }
-      // reset dt to inf (when new individual)
-      dt(i) = datum::inf;
-
-      // initialise state mean
-      aest = zeros(4, 3);
-      // and initial state covariance matrix
-      Pest = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma.slice(S(i) - 1), dt(i));
+      initialize_state(i, S, tau_pos, tau_vel, sigma, dt, aest, Pest);
     }
 
     // if starting a new IOU/BM bout, keep track of index
     else if (i > 0 && ID(i) == ID(i - 1) && S(i) != S(i - 1) && std::isinf(tau_pos(S(i) - 1)))
     {
-      iou(k) = R_IsNA(X(i, 0)) ? i + 1 : i; // ternary to lookahead of NA inserted by updateState, if doing so
+      iou(k) = is_observation_missing(X, i) ? i + 1 : i; // ternary to lookahead of NA inserted by updateState, if doing so
       k++;
     }
 
     // update our estimate (if, missing obs skip to prediction)
-    if (!R_IsNA(X(i, 0)))
+    if (!is_observation_missing(X, i))
     {
-      H(0, 0) = Hmat(i, 0);
-      H(1, 1) = Hmat(i, 1);
-      H(0, 1) = Hmat(i, 2);
-      H(1, 0) = Hmat(i, 3);
+      H = {{Hmat(i, 0), Hmat(i, 2)}, {Hmat(i, 3), Hmat(i, 1)}};
       mat aobs = join_rows(X.row(i).t(), eye(2, 2));
       // measurement residual (zRes, u)
       u.slice(i) = aobs - (Z * aest);
@@ -216,7 +190,7 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
   } // end filter iterations
 
   // calculate state based mu
-  // @todo: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
+  // TODO: is element wise multiply on cube slower than reshaping? is there some kind of tensor operation (contraction?)
   for (int i = 0; i < nbStates; i++)
   {
     // if IOU/BM state, use bout start location for mu
@@ -229,7 +203,8 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
         {
           // find the max iou.head(k) that is not greater than idx
           uvec bout_idxs = find(iou.head(k) <= iou_idx(l));
-          if (bout_idxs.n_elem > 0) {
+          if (bout_idxs.n_elem > 0)
+          {
             // max() is index of most recent iou/bm start
             // min() would be first iou/bm start
             uword bout_start_idx = bout_idxs.max();
@@ -284,4 +259,27 @@ List kalman_rcpp(arma::mat &data, int nbStates, arma::vec param, arma::vec fixmu
   return List::create(
       Rcpp::Named("llk") = llk,
       Rcpp::Named("mu") = mu_out);
+}
+
+void prepare_sigma(const arma::vec &param, const int &nbStates, arma::cube &sigma)
+{
+  if (param.size() / nbStates == 3)
+  {
+    for (int i = 0; i < nbStates; ++i)
+    {
+      sigma.slice(i).diag().fill(param(2 * nbStates + i));
+    }
+  }
+  else if (param.size() / nbStates == 5)
+  {
+    for (int i = 0; i < nbStates; ++i)
+    {
+      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
+      sigma.slice(i)(0, 1) = sigma.slice(i)(1, 0) = param(2 * nbStates + (3 * i + 1));
+    }
+  }
+}
+
+bool is_observation_missing(const arma::mat &X, const int &i) {
+    return R_IsNA(X(i, 0)) || R_IsNaN(X(i, 0));
 }

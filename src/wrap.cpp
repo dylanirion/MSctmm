@@ -1,8 +1,8 @@
 #include <RcppArmadillo.h>
+#include "mat.hpp"
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using namespace arma;
-#include "mat.hpp"
 
 //' Make mu matrix
 //'

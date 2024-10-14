@@ -1,9 +1,6 @@
-#include <RcppArmadillo.h>
-// [[Rcpp::depends(RcppArmadillo)]]
+#include "smooth.hpp"
 using namespace Rcpp;
 using namespace arma;
-#include "mat.hpp"
-#include "pdsolve.hpp"
 
 //' Kalman smoother
 //'
@@ -38,7 +35,7 @@ using namespace arma;
 //'
 //' @export
 // [[Rcpp::export]]
-List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, const arma::vec fixmu, const arma::mat &Hmat)
+List smooth_rcpp(const arma::mat &data, const int &nbStates, const arma::vec &param, const arma::vec &fixmu, const arma::mat &Hmat)
 {
   int nbData = data.n_rows;
 
@@ -60,20 +57,7 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
   vec tau_pos = param.subvec(0, nbStates - 1);
   vec tau_vel = param.subvec(nbStates, 2 * nbStates - 1);
   cube sigma(2, 2, nbStates);
-  for (int i = 0; i < nbStates; i++)
-  {
-    if (param.size() / nbStates == 3)
-    {
-      sigma.slice(i)(0, 0) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
-      sigma.slice(i)(1, 1) = param.subvec(2 * nbStates, 3 * nbStates - 1)(i);
-    }
-    else if (param.size() / nbStates == 5)
-    {
-      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
-      sigma.slice(i)(0, 1) = param(2 * nbStates + (3 * i + 1));
-      sigma.slice(i)(1, 0) = param(2 * nbStates + (3 * i + 1));
-    }
-  }
+  prepare_sigma(param, nbStates, sigma);
 
   // define all empty matrices and vectors needed for the Kalman Filter and Smoother
   mat Z{{1, 0, 0, 0}, {0, 0, 1, 0}};  // observation model which maps the true state space into the observed space ( P, Hk )
@@ -94,22 +78,13 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
     // if first location or new individual
     if (i == 0 || ID(i) != ID(i - 1))
     {
-      // reset dt to inf (when new individual)
-      dt(i) = datum::inf;
-
-      // initialise state mean
-      afor.row(i) = zeros(1, 4);
-      // and initial state covariance matrix
-      Pfor.slice(i) = makeQ(tau_pos(S(i) - 1), tau_vel(S(i) - 1), sigma.slice(S(i) - 1), dt(i));
+      initialize_state(i, S, tau_pos, tau_vel, sigma, dt, afor.row(i), Pfor.slice(i));
     }
 
     // update our estimate ( if, missing obs skip to prediction )
-    if (!R_IsNA(X(i, 0)) && !R_IsNaN(X(i, 0)))
+    if (!is_observation_missing(X, i))
     {
-      H(0, 0) = Hmat(i, 0);
-      H(1, 1) = Hmat(i, 1);
-      H(0, 1) = Hmat(i, 2);
-      H(1, 0) = Hmat(i, 3);
+      H = {{Hmat(i, 0), Hmat(i, 2)}, {Hmat(i, 3), Hmat(i, 1)}};
       // measurement residual (zRes, u)
       u.row(i) = X.row(i) - (Z * afor.row(i).t()).t();
 
@@ -192,7 +167,7 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
     if (ID(j) == ID(j + 1))
     {
       mat TL(4, 4);
-      if (!R_IsNA(X(j, 0)) && !R_IsNaN(X(j, 0)))
+      if (!is_observation_missing(X, j))
       {
         mat TL = Pest.slice(j) * T.slice(j).t();
       }
@@ -219,7 +194,7 @@ List smooth_rcpp(const arma::mat &data, int nbStates, const arma::vec param, con
 
       L.slice(j) = TL;
       mat J = I - (L.slice(j) * T.slice(j));
-      if (!R_IsNA(X(j, 0)) && !R_IsNaN(X(j, 0)))
+      if (!is_observation_missing(X, j))
       {
         mat JPest = J * Pest.slice(j);
         JPest.replace(datum::nan, 0);
