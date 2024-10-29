@@ -38,7 +38,7 @@ NumericVector dexp2(NumericVector x, Nullable<NumericVector> Exp)
 }
 
 // dexp1
-// numerically stable evaluation of 1 - exp(-x)^1
+// numerically stable evaluation of 1 - exp(-x)
 NumericVector dexp1(NumericVector x, Nullable<NumericVector> Exp)
 {
   NumericVector res(x.size());
@@ -209,7 +209,7 @@ mat makeT(double tau_pos, double tau_vel, double dt)
   double fdt = f * dt;
 
   if (!std::isinf(tau(0)) && tau(0) != 0 && tau(1) != 0)
-  { // IOU, OUF/OUO
+  { // OUF/OUO
     if (!std::isinf(dt))
     {
 
@@ -289,7 +289,7 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
   vec DExp2;
 
   // IID limit
-  mat Q(4, 4, fill::zeros);
+  mat Q(2, 2, fill::zeros);
   Q(0, 0) = 1;
 
   if (std::isinf(tau(0)) && tau(1) == 0)
@@ -426,11 +426,17 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
 
     } // end OUF/OUO
   }
-  Q.submat(0, 0, 1, 1) = Q.submat(0, 0, 1, 1) * sigma.t();
+
+  mat Q_2d(4, 4, fill::zeros);
+    
+  Q_2d.submat(0, 0, 1, 1) = Q * sigma(0,0);
+  Q_2d.submat(2, 2, 3, 3) = Q * sigma(1,1);
+  Q_2d.submat(0, 2, 1, 3) = Q * sigma(0,1);
+  Q_2d.submat(2, 0, 3, 1) = Q * sigma(1,0);
 
   // IOU prior fix
-  Q.replace(datum::nan, 0); // replace each NaN with 0
-  Q.submat(2, 2, 3, 3) = Q.submat(0, 0, 1, 1);
+  Q_2d.replace(datum::nan, 0);
 
-  return Q;
+  //return Q;
+  return Q_2d;
 }

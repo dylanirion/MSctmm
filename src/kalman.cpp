@@ -267,15 +267,15 @@ void prepare_sigma(const arma::vec &param, const int &nbStates, arma::cube &sigm
   {
     for (int i = 0; i < nbStates; ++i)
     {
-      sigma.slice(i).diag().fill(param(2 * nbStates + i));
+      sigma.slice(i).diag().fill(param(i*3 + 2));
     }
   }
   else if (param.size() / nbStates == 5)
   {
     for (int i = 0; i < nbStates; ++i)
     {
-      sigma.slice(i).diag() = param.subvec(2 * nbStates + (3 * i), 2 * nbStates + (3 * i) + 1);
-      sigma.slice(i)(0, 1) = sigma.slice(i)(1, 0) = param(2 * nbStates + (3 * i + 1));
+      sigma.slice(i).diag() = param.subvec(i*5 + 2, i*5 + 3);
+      sigma.slice(i)(0, 1) = sigma.slice(i)(1, 0) = param(i*5 + 4);
     }
   }
 }
