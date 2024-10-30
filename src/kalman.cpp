@@ -261,21 +261,22 @@ List kalman_rcpp(const arma::mat &data, const int &nbStates, const arma::vec &pa
       Rcpp::Named("mu") = mu_out);
 }
 
+//NB: param order is tau_ps, tau_vs, sigmas
 void prepare_sigma(const arma::vec &param, const int &nbStates, arma::cube &sigma)
 {
   if (param.size() / nbStates == 3)
   {
     for (int i = 0; i < nbStates; ++i)
     {
-      sigma.slice(i).diag().fill(param(i*3 + 2));
+      sigma.slice(i).diag().fill(param(2 * nbStates + i));
     }
   }
   else if (param.size() / nbStates == 5)
   {
     for (int i = 0; i < nbStates; ++i)
     {
-      sigma.slice(i).diag() = param.subvec(i*5 + 2, i*5 + 3);
-      sigma.slice(i)(0, 1) = sigma.slice(i)(1, 0) = param(i*5 + 4);
+      sigma.slice(i).diag() = param.subvec(2 * nbStates + i*3, 2 * nbStates + i*3 + 1);
+      sigma.slice(i)(0, 1) = sigma.slice(i)(1, 0) = param(2 * nbStates + i*3 + 2);
     }
   }
 }
