@@ -4,6 +4,7 @@
 #include <Rcpp.h>
 #include <string>
 #include <algorithm>
+#include <chrono>
 // [[Rcpp::depends(RcppArmadillo)]]
 
 class Model

@@ -40,8 +40,10 @@ arma::mat sample_path_mr_(const int a, const int b, const double t0, const doubl
   std::vector<int> state_vec;
 
   //if non-na mus, choose spatial model, (and add mu to rateparam)
+  // was previously only doing this for SpatialNA model but need it elsewhere and it doesn't hurt
   uvec finite = arma::find_finite(mu);
-  if (model == "NA" && finite.size() > 1) {
+  //if (model == "NA" && finite.size() > 1) {
+  if (finite.size() > 1) {
     rateparam.push_back(wrap(mu), "mu");
   }
   auto mod = createModel(nbStates, (model == "NA" && finite.size() > 1) ? "SpatialNA" : model, rateparam, k);

@@ -284,16 +284,82 @@ public:
 };
 
 // Time Model
+// In this transition rate model, individuals share a rate generator matrix.
+// Rates out of each state are modelled by a hazard rate function
+// Transition probabilities into a ranged state are concentrated towards the nearest range center
+// Transition probabilities are otherwise concentrated towards the nearest range center or unranged state.  
 class TimeModel : public Model
 {
 private:
-  double t_alpha, alpha;
+  int nbStates;
+  //NB times and states of switches only! not full data
+  std::vector<double> times;
+  std::vector<int> states;
+  arma::vec mu;
+  Rcpp::NumericVector rateparams;
+  Rcpp::NumericVector priorCon;
+  double kappa;
+  arma::mat Q;
+
+  double euclideanDistance(const double x1, const double y1, const double x2, const double y2) const {
+    return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+  }
 
 public:
-  TimeModel(double t_alpha, double alpha) : t_alpha(t_alpha), alpha(alpha) {}
+  TimeModel(const int nbStates, const Rcpp::DataFrame data, const arma::vec mu, Rcpp::NumericVector rateparams, const Rcpp::NumericVector priorCon, const double kappa)
+      : nbStates(nbStates),
+        times(Rcpp::as<std::vector<double>>(data["time"])),
+        states(Rcpp::as<std::vector<int>>(data["state"])),
+        mu(mu),
+        rateparams(rateparams),
+        priorCon(priorCon),
+        kappa(kappa),
+        Q(nbStates, nbStates, arma::fill::zeros) {}
   Rcpp::NumericMatrix getQ(const double time, const double lat, const double lng) const override
   {
-    return t_alpha * (1 - std::exp(-alpha * time));
+    arma::mat Q(nbStates, nbStates, arma::fill::zeros);
+    arma::vec rangeDists(nbStates);
+    arma::vec alpha = Rcpp::as<arma::vec>(rateparams[Rcpp::Range(0, nbStates - 1)]);
+    arma::vec t_alpha = Rcpp::as<arma::vec>(rateparams[Rcpp::Range(nbStates, rateparams.length() - 1)]);
+    const auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::duration<double>(time))));
+    struct tm t = *localtime(&temp);
+    int yday = t.tm_yday * 86400;
+
+    for (int i = 0; i < nbStates; ++i) {
+      Q(i,i) = -std::min(t_alpha[i] * (1 - std::exp(-alpha[i] * yday)), kappa);
+      double x = mu[(i * 2)];
+      double y = mu[(i * 2) + 1];
+      if(std::isfinite(x) && std::isfinite(y)) {
+        rangeDists[i] = euclideanDistance(lng, lat, x, y);
+      } else {
+        rangeDists[i] = arma::datum::nan;
+      }
+    }
+    double maxDist = arma::max(rangeDists);
+    rangeDists.transform([maxDist](double dist) { return (std::isnan(dist) ? maxDist - maxDist : maxDist - dist); });
+
+    for (int j = 0; j < nbStates; ++j)
+    {
+      // sample probabilities into the other states (dirichlet random number generation)
+      std::vector<double> probs(nbStates, 0);
+      for (int k = 0; k < nbStates; ++k)
+      {
+        if (j != k)
+        {
+          double alpha = rangeDists[k] + priorCon[k];
+          probs[k] = Rcpp::rgamma(1, alpha, 1)[0];
+        }
+      }
+      for (int k = 0; k < nbStates; ++k)
+      {
+        double sum = std::accumulate(probs.begin(), probs.end(), 0.0, [j, k](double acc, double val) { return k != j ? acc + val : acc; });
+        if (j != k)
+        {
+          Q(j, k) = -Q(j,j) * probs[k] / sum;
+        }
+      }
+    }
+    return Rcpp::wrap(Q);
   }
 };
 
@@ -302,7 +368,7 @@ std::unique_ptr<Model> createModel(const int &nbStates, const std::string &model
 {
   if (model_type == "Null")
   {
-    return std::make_unique<NullModel>(nbStates, params[0]);
+    return std::make_unique<NullModel>(nbStates, params["params"]);
   }
   else if (model_type == "NA")
   {
@@ -320,6 +386,14 @@ std::unique_ptr<Model> createModel(const int &nbStates, const std::string &model
     Rcpp::NumericVector priorRate = params["priorRate"];
     Rcpp::NumericVector priorCon = params["priorCon"];
     return std::make_unique<SpatialNAModel>(nbStates, data, mu, priorShape, priorRate, priorCon, kappa);
+  }
+  else if (model_type == "Time")
+  {
+    Rcpp::DataFrame data(params["data"]);
+    arma::vec mu(Rcpp::as<arma::vec>(params["mu"]));
+    Rcpp::NumericVector rateparams = params["params"];
+    Rcpp::NumericVector priorCon = params["priorCon"];
+    return std::make_unique<TimeModel>(nbStates, data, mu, rateparams, priorCon, kappa);
   }
   else
   {

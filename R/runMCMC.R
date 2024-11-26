@@ -356,12 +356,12 @@ runMCMC <- function(track,
     )
   }
 
-  if (!updateState && !is.na(model) && ((!is.null(priors$shape) || !is.null(priors$rate)) || !is.null(priors$con))) {
+  if (!updateState && !is.na(model) && ((!is.null(priors$shape) || !is.null(priors$rate)))) {
     warning(
       "argument 'updateState' is FALSE but 'model' is not NA, ignoring ",
       paste(c(
-        "priors$shape", "priors$rate", "priors$con"
-      )[which(!sapply(priors[c("shape", "rate", "con")], is.null))], collapse = ", ")
+        "priors$shape", "priors$rate"
+      )[which(!sapply(priors[c("shape", "rate")], is.null))], collapse = ", ")
     )
   }
 
@@ -411,7 +411,6 @@ runMCMC <- function(track,
     rateparam <- NULL
     priorShape <- priors$shape
     priorRate <- priors$rate
-    priorCon <- priors$con
   } else {
     rateS <-
       props$S[(nbParam * nbStates + 1):nrow(props$S), (nbParam * nbStates + 1):ncol(props$S)]
@@ -424,8 +423,8 @@ runMCMC <- function(track,
     rateparam <- inits$rateparam
     priorShape <- NULL
     priorRate <- NULL
-    priorCon <- NULL
   }
+  priorCon <- priors$con
   kappa <- fixed$kappa
 
   # unpack proposal parameters
@@ -673,7 +672,14 @@ runMCMC <- function(track,
                 priorShape = priorShape, priorRate = priorRate, priorCon = priorCon
               )
             } else {
-              list(newRateParams[[2]])
+              list(
+                data = rbind(
+                  data.list[[id]][1, c("time", "state")], # to include first interval
+                  switch[[id]],
+                  data.list[[id]][nrow(data.list[[id]]), c("time", "state")] # to include last interval
+                ),
+                params = newRateParams[[2]],
+                priorCon = priorCon)
             },
             kappa = kappa,
             model = model
