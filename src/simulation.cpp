@@ -49,7 +49,7 @@ arma::mat sample_path_mr_(const int a, const int b, const double t0, const doubl
   auto mod = createModel(nbStates, (model == "NA" && finite.size() > 1) ? "SpatialNA" : model, rateparam, k);
 
   // sample paths until a valid path has been obtained
-  for (int i = 0; i < 1000; i++)
+  for (int i = 0; i < 2000; i++)
   {
     // insert the initial time and state
     time_vec = {t0};
@@ -95,7 +95,7 @@ arma::mat sample_path_mr_(const int a, const int b, const double t0, const doubl
 
     int j = 0;
     // Proceed with forward sampling algorithm
-    while (cur_time < t1 && j < 1000)
+    while (cur_time < t1 && j < 2000)
     {
       j++;
       // check if the state is an absorbing state
