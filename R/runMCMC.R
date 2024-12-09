@@ -601,6 +601,7 @@ runMCMC <- function(track,
     if (!is.na(model)) {
       allRateParam <- matrix(NA, nrow = nbIter - burnin, ncol = length(rateparam))
       row.names(allRateParam) <- format((burnin + 1):nbIter, scientific = FALSE, trim = TRUE)
+      colnames(allRateParam) <- names(inits$rateparam)
     }
   }
 
