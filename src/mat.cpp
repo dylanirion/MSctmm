@@ -214,8 +214,8 @@ mat makeT(double tau_pos, double tau_vel, double dt)
     {
 
       double nudt = nu * dt;
-      // bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
-      bool EXP = nudt > 0.8813736;
+      bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
+      //bool EXP = nudt > 0.8813736;
 
       double c0;
       double c1;
@@ -238,17 +238,15 @@ mat makeT(double tau_pos, double tau_vel, double dt)
         double Sinc0;
         double Cos0;
 
-        // if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
-        Sin0 = sinh(nudt);
-        Sinc0 = as<double>(wrap(sinch(as<NumericVector>(wrap(nudt)), as<NumericVector>(wrap(Sin0)))));
-        Cos0 = cosh(nudt);
-        /*
+        if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
+          Sin0 = sinh(nudt);
+          Sinc0 = as<double>(wrap(sinch(as<NumericVector>(wrap(nudt)), as<NumericVector>(wrap(Sin0)))));
+          Cos0 = cosh(nudt);
         } else { // Trigonometric
-         Sin0 = sin(nudt);
-         Sinc0 = as<double>( wrap( sinc( as<NumericVector>( wrap( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
-         Cos0 = cos(nudt);
+          Sin0 = sin(nudt);
+          Sinc0 = as<double>( wrap( sinc( as<NumericVector>( wrap( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
+          Cos0 = cos(nudt);
         }
-         */
         double SincE = Sinc0 * as_scalar(Exp);
         double CosE = Cos0 * as_scalar(Exp);
 
@@ -354,8 +352,8 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
     { // IOU,OUF/OUO,IID
 
       double nudt = nu * dt;
-      // bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
-      bool EXP = nudt > 0.8813736;
+      bool EXP = tau(0) > tau(1) && nudt > 0.8813736;
+      //bool EXP = nudt > 0.8813736;
 
       double c1;
 
@@ -384,17 +382,17 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
         double Sinc0;
         double Cos0;
 
-        // if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
-        Sin0 = sinh(nudt);
-        Sinc0 = as<double>(wrap(sinch(as<NumericVector>(wrap(nudt)), as<NumericVector>(wrap(Sin0)))));
-        Cos0 = cosh(nudt);
-        /*
+        if( tau(0) > tau(1) ) { // Hyperbolic-trigonometric
+          Sin0 = sinh(nudt);
+          Sinc0 = as<double>(wrap(sinch(as<NumericVector>(wrap(nudt)), as<NumericVector>(wrap(Sin0)))));
+          Cos0 = cosh(nudt);
+        
         } else { // Trigonometric
          Sin0 = sin( nudt );
          Sinc0 = as<double>( wrap( sinc( as<NumericVector>( wrap ( nudt ) ), as<NumericVector>( wrap( Sin0 ) ) ) ) );
          Cos0 = cos( nudt );
         }
-         */
+        
         // Also need these again
         double SincE = Sinc0 * as_scalar(Exp);
         c1 = -(omega2 * dt) * SincE;
@@ -404,16 +402,16 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
         CROSS = 2 * Cos0 * as_scalar(Exp) * CROSS;
         double Sin2 = pow(Sin0, 2);
 
-        // if( tau(0) > tau(1) )
-        //{
-        Q(0, 0) = OUTER - Sin2 - CROSS;
-        Q(1, 1) = (OUTER - Sin2 + CROSS) * omega2;
-        //}
-        // else
-        //{
-        //  Q(0,0) = OUTER + Sin2 - CROSS;
-        //  Q(1,1) = ( OUTER + Sin2 + CROSS ) * omega2;
-        //}
+        if( tau(0) > tau(1) )
+        {
+          Q(0, 0) = OUTER - Sin2 - CROSS;
+          Q(1, 1) = (OUTER - Sin2 + CROSS) * omega2;
+        }
+        else
+        {
+          Q(0,0) = OUTER + Sin2 - CROSS;
+          Q(1,1) = ( OUTER + Sin2 + CROSS ) * omega2;
+        }
       }
 
       // Initially vanishing terms
@@ -426,7 +424,6 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
 
     } // end OUF/OUO
   }
-
   mat Q_2d(4, 4, fill::zeros);
     
   Q_2d.submat(0, 0, 1, 1) = Q * sigma(0,0);
@@ -436,7 +433,6 @@ mat makeQ(double tau_pos, double tau_vel, arma::mat sigma, double dt)
 
   // IOU prior fix
   Q_2d.replace(datum::nan, 0);
-
-  //return Q;
+  //Rcout << Q_2d << std::endl;
   return Q_2d;
 }
