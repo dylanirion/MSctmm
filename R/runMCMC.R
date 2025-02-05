@@ -737,11 +737,11 @@ runMCMC <- function(track,
           }
         }
       }
-      #if (!is.na(model) && adapt && iter >= 1000 && iter <= adapt) {
-      #  newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
-      #  newS[is.na(newS)] <- rateS[is.na(newS)]
-      #  rateS <- newS
-      #}
+      if (!is.na(model) && adapt && iter >= 1000 && iter <= adapt) {
+        newS <- adapt_S(rateS, newRateParams[[1]], acceptProb, iter)
+        newS[is.na(newS)] <- rateS[is.na(newS)]
+        rateS <- newS
+      }
     }
 
     ###################################
@@ -847,6 +847,9 @@ runMCMC <- function(track,
 
     if (debug) {
       cat(diag(S), "\n")
+      if (!is.na(model)) {
+        cat(diag(rateS), "\n")
+      }
     }
   }
 
