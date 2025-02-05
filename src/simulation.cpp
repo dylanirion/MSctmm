@@ -49,7 +49,7 @@ arma::mat sample_path_mr_(const int a, const int b, const double t0, const doubl
   auto mod = createModel(nbStates, (model == "NA" && finite.size() > 1) ? "SpatialNA" : model, rateparam, k);
 
   // sample paths until a valid path has been obtained
-  for (int i = 0; i < 2000; i++)
+  for (int i = 0; i < 100; i++)
   {
     // insert the initial time and state
     time_vec = {t0};
